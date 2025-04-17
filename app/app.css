@@ -1,11 +1,11 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 html,
@@ -131,4 +131,58 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Base styles common to both handles */
+.main-handle,
+.indicator-handle {
+  @apply flex items-center justify-center outline-none transition-colors duration-200 z-10 relative cursor-col-resize;
+  /* Ensure they are above panels */
+  z-index: 15;
+}
+
+/* Main handle (with the line) */
+.main-handle {
+  @apply w-1.5 bg-gray-100 dark:bg-gray-900; /* Background matches panel group */
+}
+.main-handle::after {
+  @apply content-[''] absolute left-1/2 -translate-x-1/2 h-6 w-[1px] bg-gray-300 dark:bg-gray-700 transition-colors duration-200;
+}
+.main-handle:hover {
+  @apply bg-gray-200/80 dark:hover:bg-gray-800/80;
+}
+.main-handle[data-resize-handle-active] {
+  @apply bg-blue-500/30 dark:bg-blue-600/30 scale-x-125 transition-transform duration-150;
+}
+.main-handle[data-resize-handle-active]::after {
+  @apply bg-blue-500 dark:bg-blue-400;
+}
+
+/* Indicator handle (thin, with chevron) */
+.indicator-handle {
+  @apply w-3.5 bg-background hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-800/50;
+  /* Remove the line from the main handle if it inherits */
+}
+.indicator-handle::after {
+  @apply hidden; /* Ensure no line */
+}
+/* Add the edge border */
+.indicator-handle.left {
+  @apply border-r border-gray-200/80 dark:border-gray-800/80;
+}
+.indicator-handle.right {
+  @apply border-l border-gray-200/80 dark:border-gray-800/80;
+}
+
+/* Chevron icon styling */
+.indicator-icon {
+  @apply h-4 w-4 text-gray-400 dark:text-gray-500 transition-colors duration-150;
+}
+.indicator-handle:hover .indicator-icon {
+  @apply text-gray-600 dark:text-gray-400;
+}
+
+/* Tooltip Content Styling (example) */
+.tooltip-content {
+  @apply text-xs px-2 py-1;
 }
