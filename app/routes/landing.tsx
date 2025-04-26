@@ -1,8 +1,17 @@
-import { Link } from 'react-router';
-import logoDark from './logo-dark.svg';
-import logoLight from './logo-light.svg';
+import type { Route } from './+types/landing';
 
-export function Welcome() {
+import { Link } from 'react-router';
+import logoDark from '/logo-dark.svg';
+import logoLight from '/logo-light.svg';
+
+export function meta({}: Route.MetaArgs) {
+  return [
+    { title: 'New React Router App' },
+    { name: 'description', content: 'Welcome to React Router!' },
+  ];
+}
+
+export default function Home() {
   return (
     <main className="flex items-center justify-center pt-16 pb-4">
       <div className="flex-1 flex flex-col items-center gap-16 min-h-0">
@@ -40,7 +49,7 @@ export function Welcome() {
                 </li>
               ))}
             </ul>
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/dashboard">dashboard</Link>
           </nav>
         </div>
       </div>

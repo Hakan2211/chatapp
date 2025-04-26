@@ -3,7 +3,7 @@
 import * as React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 
-import { cn } from '~/lib/utils'; // Make sure this path is correct
+import { cn } from '#/lib/utils'; // Make sure this path is correct
 
 // --- Correct: Tooltip is now just an alias for the Radix Root ---
 const Tooltip = TooltipPrimitive.Root;
