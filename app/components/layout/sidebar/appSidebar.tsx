@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '#/components/ui/sidebar';
-import UserDropdown from '#/components/layout/user-dropdown';
+import UserDropdown from '#/components/layout/sidebar/user-dropdown';
 import {
   FileText,
   Home,
@@ -156,9 +156,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               >
                 <div>
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground rounded-lg">
-                    {/* Replace UserDropdown with static content or fetch user data */}
                     <UserDropdown />
-                    {/* <span>JD</span> */}
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">John Doe</span>

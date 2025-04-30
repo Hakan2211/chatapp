@@ -5,6 +5,7 @@ import {
 } from '#/components/ui/sidebar';
 // import { SettingsPanelProvider } from '#/components/ui/settings-panel';
 import { Outlet } from 'react-router';
+import { TwoColumnProvider } from '#/context/twoColumnContext';
 
 import {
   mockProjectFiles,
@@ -13,7 +14,7 @@ import {
   type MockProjectFilesData,
   type ProjectFileTreeItem, // If needed explicitly
 } from '#/mockData/mockData'; // Adjust path if necessary
-import { AppSidebar } from '#/components/layout/appSidebar';
+import { AppSidebar } from '#/components/layout/sidebar/appSidebar';
 
 export type SidebarData = {
   projects: MockProjectFilesData; // <-- Use the nested data type
@@ -51,11 +52,11 @@ export default function DashboardLayout() {
         <header className="sticky top-0 flex shrink-0 bg-sidebar p-3">
           <SidebarTrigger className="-ml-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
         </header>
-        {/* <SettingsPanelProvider> */}
-        <div className="flex h-[calc(100svh-4rem)] bg-background md:rounded-lg md:group-peer-data-[state=collapsed]/sidebar-inset:rounded-s-none transition-all ease-in-out duration-300">
-          <Outlet />
-        </div>
-        {/* </SettingsPanelProvider> */}
+        <TwoColumnProvider>
+          <div className="flex h-[calc(100svh-4rem)] bg-background md:rounded-lg md:group-peer-data-[state=collapsed]/sidebar-inset:rounded-s-none transition-all ease-in-out duration-300">
+            <Outlet />
+          </div>
+        </TwoColumnProvider>
       </SidebarInset>
     </SidebarProvider>
   );
