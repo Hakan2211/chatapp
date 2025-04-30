@@ -33,15 +33,51 @@ interface TwoColumnResizeLayoutProps {
   autoSaveId: string;
 }
 
-interface LeftPanelProps {
+interface PanelProps {
   children: ReactNode;
-  title?: string;
 }
 
-interface RightPanelProps {
+interface TitleProps {
   children: ReactNode;
-  title?: string;
 }
+
+interface ActionsProps {
+  children: ReactNode;
+}
+
+const LeftPanelRoot: React.FC<PanelProps> = ({ children }) => {
+  return <>{children}</>;
+};
+
+const RightPanelRoot: React.FC<PanelProps> = ({ children }) => {
+  return <>{children}</>;
+};
+
+const Title: React.FC<TitleProps> = ({ children }) => {
+  return <>{children}</>;
+};
+
+const Actions: React.FC<ActionsProps> = ({ children }) => {
+  return <>{children}</>;
+};
+
+type LeftPanelComponent = React.FC<PanelProps> & {
+  Title: React.FC<TitleProps>;
+  Actions: React.FC<ActionsProps>;
+};
+
+type RightPanelComponent = React.FC<PanelProps> & {
+  Title: React.FC<TitleProps>;
+  Actions: React.FC<ActionsProps>;
+};
+
+const LeftPanel = LeftPanelRoot as LeftPanelComponent;
+LeftPanel.Title = Title;
+LeftPanel.Actions = Actions;
+
+const RightPanel = RightPanelRoot as RightPanelComponent;
+RightPanel.Title = Title;
+RightPanel.Actions = Actions;
 
 function TwoColumnResizeLayout({
   children,
@@ -108,16 +144,45 @@ function TwoColumnResizeLayout({
 
   // Extract LeftPanel and RightPanel components
   const leftPanel = React.Children.toArray(children).find(
-    (child) =>
-      React.isValidElement(child) &&
-      child.type === TwoColumnResizeLayout.LeftPanel
-  ) as React.ReactElement<LeftPanelProps> | undefined;
+    (child) => React.isValidElement(child) && child.type === LeftPanel
+  ) as React.ReactElement<PanelProps> | undefined;
 
   const rightPanel = React.Children.toArray(children).find(
+    (child) => React.isValidElement(child) && child.type === RightPanel
+  ) as React.ReactElement<PanelProps> | undefined;
+
+  // Extract Title and Actions from panel children
+  const leftPanelChildren = leftPanel
+    ? React.Children.toArray(leftPanel.props.children)
+    : [];
+  const leftPanelTitle = leftPanelChildren.find(
+    (child) => React.isValidElement(child) && child.type === LeftPanel.Title
+  ) as React.ReactElement<TitleProps> | undefined;
+  const leftPanelActions = leftPanelChildren.find(
+    (child) => React.isValidElement(child) && child.type === LeftPanel.Actions
+  ) as React.ReactElement<ActionsProps> | undefined;
+
+  const rightPanelChildren = rightPanel
+    ? React.Children.toArray(rightPanel.props.children)
+    : [];
+  const rightPanelTitle = rightPanelChildren.find(
+    (child) => React.isValidElement(child) && child.type === RightPanel.Title
+  ) as React.ReactElement<TitleProps> | undefined;
+  const rightPanelActions = rightPanelChildren.find(
+    (child) => React.isValidElement(child) && child.type === RightPanel.Actions
+  ) as React.ReactElement<ActionsProps> | undefined;
+
+  // Extract content (non-Title, non-Actions children)
+  const leftPanelContent = leftPanelChildren.filter(
     (child) =>
-      React.isValidElement(child) &&
-      child.type === TwoColumnResizeLayout.RightPanel
-  ) as React.ReactElement<RightPanelProps> | undefined;
+      !React.isValidElement(child) ||
+      (child.type !== LeftPanel.Title && child.type !== LeftPanel.Actions)
+  );
+  const rightPanelContent = rightPanelChildren.filter(
+    (child) =>
+      !React.isValidElement(child) ||
+      (child.type !== RightPanel.Title && child.type !== RightPanel.Actions)
+  );
 
   return (
     <div className="flex flex-1 h-full w-full">
@@ -147,10 +212,12 @@ function TwoColumnResizeLayout({
               transition={{ duration: 0.15 }}
               className="flex flex-col h-full"
             >
-              <PanelHeader title={leftPanel?.props.title || 'Left Panel'} />
-              <div className="flex-1 p-4 lg:p-5">
-                {leftPanel?.props.children}
-              </div>
+              <PanelHeader>
+                <PanelHeader.Actions>
+                  {leftPanelActions?.props.children}
+                </PanelHeader.Actions>
+              </PanelHeader>
+              <div className="flex-1 p-4 lg:p-5">{leftPanelContent}</div>
             </motion.div>
           )}
         </ResizablePanel>
@@ -195,20 +262,23 @@ function TwoColumnResizeLayout({
                 transition={{ duration: 0.15 }}
                 className="flex flex-col h-full"
               >
-                <PanelHeader title={rightPanel.props.title || 'Right Panel'}>
-                  {!isDefaultLayout && (
-                    <HeaderButton
-                      tooltip="Reset Layout (Ctrl+R)"
-                      onClick={resetLayout}
-                      aria-label="Reset column layout"
-                    >
-                      <Columns2Icon className="h-4 w-4" />
-                    </HeaderButton>
-                  )}
+                <PanelHeader>
+                  <PanelHeader.Actions>
+                    {rightPanelActions?.props.children}
+                  </PanelHeader.Actions>
+                  <PanelHeader.Actions>
+                    {!isDefaultLayout && (
+                      <HeaderButton
+                        tooltip="Reset Layout (Ctrl+R)"
+                        onClick={resetLayout}
+                        aria-label="Reset column layout"
+                      >
+                        <Columns2Icon className="h-4 w-4" />
+                      </HeaderButton>
+                    )}
+                  </PanelHeader.Actions>
                 </PanelHeader>
-                <div className="flex-1 p-4 lg:p-5">
-                  {rightPanel.props.children}
-                </div>
+                <div className="flex-1 p-4 lg:p-5">{rightPanelContent}</div>
               </motion.div>
             )}
           </ResizablePanel>
@@ -218,18 +288,7 @@ function TwoColumnResizeLayout({
   );
 }
 
-TwoColumnResizeLayout.LeftPanel = function LeftPanel({
-  children,
-  title,
-}: LeftPanelProps) {
-  return <>{children}</>;
-};
-
-TwoColumnResizeLayout.RightPanel = function RightPanel({
-  children,
-  title,
-}: RightPanelProps) {
-  return <>{children}</>;
-};
+TwoColumnResizeLayout.LeftPanel = LeftPanel;
+TwoColumnResizeLayout.RightPanel = RightPanel;
 
 export default TwoColumnResizeLayout;

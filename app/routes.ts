@@ -9,7 +9,12 @@ export default [
   index('./routes/landing.tsx'),
   layout('./routes/dashboard/layout.tsx', [
     route('dashboard', './routes/dashboard/index.tsx'),
-    route('projects', './routes/dashboard/projects/projects.tsx'),
+    route('projects', './routes/dashboard/projects/projects.tsx', [
+      route('editor', './routes/dashboard/projects/projects.editor.tsx'),
+      route('summary', './routes/dashboard/projects/projects.summary.tsx'),
+      route('notes', './routes/dashboard/projects/projects.notes.tsx'),
+    ]),
+
     route(
       'projects/:projectId',
       './routes/dashboard/projects/projects-detail.tsx'

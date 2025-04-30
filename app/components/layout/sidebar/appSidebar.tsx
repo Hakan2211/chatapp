@@ -60,7 +60,7 @@ const iconBarIcons = [
     type: PanelType.Projects,
     label: 'Projects',
     icon: <LayoutGrid className={iconSize} />,
-    path: '/projects',
+    path: '/projects/editor',
   },
   {
     type: PanelType.Notes,
@@ -124,9 +124,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   React.useEffect(() => {
     const path = location.pathname;
-    const matchingIcon = iconBarIcons.find((icon) =>
-      path.startsWith(icon.path)
-    );
+    const matchingIcon = iconBarIcons.find((icon) => {
+      if (icon.type === PanelType.Projects) {
+        // Consider /projects and any child routes (/projects/*) as active
+        return path.startsWith('/projects');
+      }
+      return path.startsWith(icon.path);
+    });
     if (matchingIcon) {
       setSelectedPanel(matchingIcon.type);
     }
@@ -179,7 +183,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         side: 'right',
                         sideOffset: 10,
                       }}
-                      isActive={item.path === location.pathname}
+                      isActive={
+                        item.type === PanelType.Projects
+                          ? location.pathname.startsWith('/projects') // Active for /projects and child routes
+                          : location.pathname === item.path
+                      }
                       asChild
                     >
                       <NavLink
