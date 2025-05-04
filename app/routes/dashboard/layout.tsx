@@ -4,7 +4,7 @@ import {
   SidebarTrigger,
 } from '#/components/ui/sidebar';
 // import { SettingsPanelProvider } from '#/components/ui/settings-panel';
-import { Outlet } from 'react-router';
+import { Outlet, useLoaderData } from 'react-router';
 import { TwoColumnProvider } from '#/context/twoColumnContext';
 
 import {
@@ -15,27 +15,90 @@ import {
   type ProjectFileTreeItem, // If needed explicitly
 } from '#/mockData/mockData'; // Adjust path if necessary
 import { AppSidebar } from '#/components/layout/sidebar/appSidebar';
+import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
+import { prisma } from '#/utils/db.server';
 
 export type SidebarData = {
   projects: MockProjectFilesData; // <-- Use the nested data type
   notes: Note[]; // <-- Keep using Note[]
 };
 
-export async function loader() {
-  // --- Return mock data directly ---
-  // const [projectsResponse, notesResponse] = await Promise.all([
-  //   fetch('http://localhost:3001/projects'),
-  //   fetch('http://localhost:3001/notes'),
-  // ]);
-  // if (!projectsResponse.ok || !notesResponse.ok)
-  //   throw new Error('Failed to load sidebar data');
-  // const projects = await projectsResponse.json();
-  // const notes = await notesResponse.json();
+export async function loader({ request }: LoaderFunctionArgs) {
+  const projects = await prisma.project.findMany({
+    where: {
+      userId: 'cma9bzpxj0002uc8kvztzin2r',
+      parentId: null,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+  return { projects };
+}
 
-  //   // Use imported mock data
-  const projects = mockProjectFiles;
-  const notes = mockNotes; // Assuming mockNotes exists and is imported
-  return { projects, notes };
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const intent = formData.get('intent')?.toString();
+  const userId = 'user1'; // Replace with actual user ID from session
+
+  if (intent === 'create') {
+    const name = formData.get('name')?.toString();
+    if (!name) {
+      return new Response(
+        JSON.stringify({ error: 'Project name is required' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    const project = await prisma.project.create({
+      data: {
+        name,
+        userId,
+      },
+    });
+    // Return plain object on success, React Router handles serialization
+    return { project };
+  }
+
+  if (intent === 'update') {
+    const id = formData.get('id')?.toString();
+    const name = formData.get('name')?.toString();
+    if (!id || !name) {
+      return new Response(
+        JSON.stringify({ error: 'Project ID and name are required' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    const project = await prisma.project.update({
+      where: { id },
+      data: { name },
+    });
+    return { project };
+  }
+
+  if (intent === 'delete') {
+    const id = formData.get('id')?.toString();
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'Project ID is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    await prisma.project.delete({
+      where: { id },
+    });
+    return { success: true };
+  }
+
+  return new Response(JSON.stringify({ error: 'Invalid intent' }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export default function DashboardLayout() {

@@ -1,5 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { NavLink, useLoaderData, useLocation } from 'react-router';
+import {
+  NavLink,
+  useLoaderData,
+  useLocation,
+  type LoaderFunctionArgs,
+} from 'react-router';
 
 import {
   Sidebar,
@@ -38,6 +43,12 @@ import {
   type HomeProjectItem,
   type ProjectTreeOptions,
 } from '#/mockData/mockData';
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from '#/components/ui/tooltip';
 
 enum PanelType {
   Account = 'account',
@@ -75,46 +86,48 @@ const iconBarIcons = [
     path: '/education',
   },
 ];
-
 const transformProjectsForHome = (
-  data: MockProjectFilesData
+  projectsData: Project[] | undefined
 ): HomeProjectItem[] => {
-  // Simple transformation: Takes top-level items, assumes they are projects
-  // TODO: This is a basic example; adapt it based on how your actual
-  // MockProjectFilesData maps to HomeProjectItem (e.g., extracting options)
-  return data.tree
-    .map((item, index): HomeProjectItem | null => {
-      if (typeof item === 'string') {
-        // Handle top-level files if needed, or filter them out
-        return null; // Or create a default HomeProjectItem
-      }
-      // Assuming top-level arrays are projects
-      const name = item[0];
-      const options =
-        typeof item[item.length - 1] === 'object' &&
-        !Array.isArray(item[item.length - 1])
-          ? (item[item.length - 1] as ProjectTreeOptions)
-          : {};
-      return {
-        id: `project-${name}-${index}`, // Generate a unique ID
-        name: name,
-        badge: 'Mock', // Add appropriate badge logic
-        lastActive: 'Unknown', // Add appropriate lastActive logic
-        starred: !!options.starred, // Ensure boolean (handles undefined)
-      };
-    })
-    .filter((p): p is HomeProjectItem => p !== null);
+  // Guard clause: If projectsData is null, undefined, or empty, return an empty array
+  if (!projectsData || projectsData.length === 0) {
+    return [];
+  }
+
+  // Now map directly over the array of Project objects
+  return projectsData.map((project): HomeProjectItem => {
+    return {
+      id: project.id, // Use the actual project ID
+      name: project.name,
+      // --- Determine these values based on your Project model ---
+      badge: 'Live', // Example: maybe based on a status field?
+      lastActive: project.createdAt.toLocaleString(), // Example: format the date
+      starred: !!project.starred, // Example: if you have a starred field
+      // --- Add other fields as needed ---
+    };
+  });
+};
+
+type Project = {
+  id: string;
+  name: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  userId: string;
+  parentId: string | null;
+  // Add any other relevant fields (e.g., starred, description)
+  starred?: boolean;
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { projects: nestedProjectsData, notes } = useLoaderData() as {
-    projects: MockProjectFilesData;
+  const { projects, notes } = useLoaderData() as {
+    projects: Project[];
     notes: Note[];
   };
 
   const homePanelProjects = useMemo(
-    () => transformProjectsForHome(nestedProjectsData),
-    [nestedProjectsData]
+    () => transformProjectsForHome(projects),
+    [projects]
   );
 
   const location = useLocation();
@@ -226,14 +239,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {selectedPanel}
             </span>
             {selectedPanel === 'projects' && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => console.log('New Project')}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer"
+                      onClick={() => console.log('New Project')}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add new project</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             {selectedPanel === 'notes' && (
               <Button
@@ -253,7 +275,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <HomePanelContent projects={homePanelProjects} />
             )}
             {selectedPanel === 'projects' && (
-              <ProjectsPanelContent projects={nestedProjectsData} />
+              <ProjectsPanelContent projects={projects} />
             )}
             {selectedPanel === 'notes' && <NotesPanelContent notes={notes} />}
             {selectedPanel === 'education' && <EducationPanelContent />}

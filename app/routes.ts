@@ -17,7 +17,13 @@ export default [
 
     route(
       'projects/:projectId',
-      './routes/dashboard/projects/projects-detail.tsx'
+      './routes/dashboard/projects/projects-detail.tsx',
+      [
+        route(
+          'chats/:chatId',
+          './routes/dashboard/projects/projects-detail.chats.tsx'
+        ),
+      ]
     ),
     route('notes', './routes/dashboard/notes/notes.tsx'),
     route('education', './routes/dashboard/education/education.tsx'),
