@@ -71,7 +71,7 @@ const iconBarIcons = [
     type: PanelType.Projects,
     label: 'Projects',
     icon: <LayoutGrid className={iconSize} />,
-    path: '/projects/editor',
+    path: '/projects',
   },
   {
     type: PanelType.Notes,

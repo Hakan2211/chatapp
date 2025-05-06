@@ -17,7 +17,7 @@ import {
 import { AppSidebar } from '#/components/layout/sidebar/appSidebar';
 import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { prisma } from '#/utils/db.server';
-
+import LayoutSidebar from '#/components/layout/sidebar/LayoutSidebar';
 export type SidebarData = {
   projects: MockProjectFilesData; // <-- Use the nested data type
   notes: Note[]; // <-- Keep using Note[]

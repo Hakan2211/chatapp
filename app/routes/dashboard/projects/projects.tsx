@@ -1,4 +1,11 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import {
+  NavLink,
+  Outlet,
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  type LoaderFunctionArgs,
+} from 'react-router';
 import TwoColumnResizeLayout from '#/components/layout/mainOutlet/twoColumnResizeLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -27,7 +34,20 @@ const COLLAPSE_THRESHOLD = 1;
 const MIN_PANEL_SIZE_DRAG = 5;
 const COLLAPSED_SIZE = 0;
 
+export async function loader({ request }: LoaderFunctionArgs) {
+  const projects = [
+    {
+      id: '1',
+      name: 'Project 1',
+      description: 'Project 1 description',
+    },
+  ];
+  return { projects };
+}
+
 export default function Projects() {
+  const data = useLoaderData<typeof loader>();
+  console.log(data, 'data');
   const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
   const firstPanelRef = useRef<ImperativePanelHandle>(null);
   const secondPanelRef = useRef<ImperativePanelHandle>(null);
