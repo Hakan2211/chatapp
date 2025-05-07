@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useState } from 'react';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -7,16 +7,11 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  // SidebarMenuSub is not needed for the ProjectTree implementation below
-} from '#/components/ui/sidebar'; // Adjust path as needed
-import { Input } from '#/components/ui/input';
+} from '#/components/ui/sidebar';
+
 import { Button } from '#/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '#/components/ui/collapsible'; // Needed for Projects
-import { cn } from '#/lib/utils'; // Adjust path as needed
+
+import { cn } from '#/lib/utils';
 import {
   FileText,
   LogOut,
@@ -27,47 +22,23 @@ import {
   Folder,
   MessageSquare,
   BookOpen,
-  Search,
-  ChevronRight,
   Plus,
   Star,
   Clock,
-  File,
   ArrowUpRight,
-  Trash2,
 } from 'lucide-react';
-// Assuming 'react-router' Link is intended for a specific routing setup.
-// If using react-router-dom v6+, use Link from 'react-router-dom'.
-// Using a placeholder Link if not fully set up.
-// import { Link } from 'react-router'; // Original import
-const Link = (
-  { to, children, ...props }: any // Placeholder Link
-) => (
-  <a href={to} {...props}>
-    {children}
-  </a>
-);
+
 import {
   type ProjectFileTreeItem,
   type ProjectTreeOptions,
-  type UserData,
   mockEducation,
   type EducationResource,
-  mockNotes,
   type Note,
   mockHomeActivity,
-  type HomeActivityItem,
-  mockHomeProjects,
   type HomeProjectItem,
-  mockProjectFiles,
-  type MockProjectFilesData,
 } from '#/mockData/mockData'; // Adjust path as needed
-import { NavLink } from 'react-router';
+import { NavLink, Link } from 'react-router';
 
-// --- Helper Functions (updateStarredStatus, updateItemName, deleteItem - if needed) ---
-
-// updateStarredStatus remains largely the same, ensure it correctly handles
-// the structure [name, options] for files that become starred.
 function updateStarredStatus(
   items: ProjectFileTreeItem[],
   path: string[],
@@ -82,7 +53,7 @@ function updateStarredStatus(
     let currentItems: ProjectFileTreeItem[] = [];
     let currentOptions: ProjectTreeOptions = {};
     let isFolder = false;
-    let originalItem = item; // Keep original reference if needed
+    let originalItem = item;
 
     if (typeof item === 'string') {
       currentName = item;
@@ -107,11 +78,6 @@ function updateStarredStatus(
       currentItems = isFolder
         ? (potentialChildren as ProjectFileTreeItem[])
         : [];
-
-      // Refine: An item like ['FolderName'] or ['FolderName', {options}] might visually be a folder
-      // but act like a file if it has no children defined yet.
-      // Let's stick to: if it has defined children, it's a folder for recursion.
-      // If it's an array structure but no children, recursion stops.
     } else {
       console.error('Invalid item structure encountered:', item);
       return item; // Return invalid item as is
@@ -408,7 +374,7 @@ export function HomePanelContent({ projects }: HomePanelContentProps) {
 
 // --- 2. Projects Panel Content (with File Tree) ---
 
-type Project = {
+export type Project = {
   id: string;
   name: string;
   createdAt: Date | string;

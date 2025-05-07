@@ -1,10 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import {
-  NavLink,
-  useLoaderData,
-  useLocation,
-  type LoaderFunctionArgs,
-} from 'react-router';
+import React, { type JSX } from 'react';
+import { NavLink, useLocation } from 'react-router';
 
 import {
   Sidebar,
@@ -16,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '#/components/ui/sidebar';
 import UserDropdown from '#/components/layout/sidebar/user-dropdown';
 import {
@@ -29,20 +23,8 @@ import {
 } from 'lucide-react';
 
 import { Button } from '#/components/ui/button';
-import {
-  AccountPanelContent,
-  EducationPanelContent,
-  HomePanelContent,
-  NotesPanelContent,
-  ProjectsPanelContent,
-} from '#/components/sidebar/panels/sidebarPanels';
 
-import {
-  type MockProjectFilesData,
-  type Note,
-  type HomeProjectItem,
-  type ProjectTreeOptions,
-} from '#/mockData/mockData';
+import { type HomeProjectItem } from '#/mockData/mockData';
 import {
   Tooltip,
   TooltipProvider,
@@ -119,16 +101,11 @@ type Project = {
   starred?: boolean;
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { projects, notes } = useLoaderData() as {
-    projects: Project[];
-    notes: Note[];
-  };
-
-  const homePanelProjects = useMemo(
-    () => transformProjectsForHome(projects),
-    [projects]
-  );
+export function AppSidebar({ content, ...props }: { content: JSX.Element }) {
+  // const { projects, notes } = useLoaderData() as {
+  //   projects: Project[];
+  //   notes: Note[];
+  // };
 
   const location = useLocation();
   const [selectedPanel, setSelectedPanel] = React.useState<PanelType>(
@@ -270,17 +247,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup className="px-0">
-            {selectedPanel === 'home' && (
-              <HomePanelContent projects={homePanelProjects} />
-            )}
-            {selectedPanel === 'projects' && (
-              <ProjectsPanelContent projects={projects} />
-            )}
-            {selectedPanel === 'notes' && <NotesPanelContent notes={notes} />}
-            {selectedPanel === 'education' && <EducationPanelContent />}
-            {selectedPanel === 'account' && <AccountPanelContent />}
-          </SidebarGroup>
+          <SidebarGroup className="px-0">{content}</SidebarGroup>
         </SidebarContent>
       </Sidebar>
     </Sidebar>

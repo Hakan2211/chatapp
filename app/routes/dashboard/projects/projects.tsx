@@ -28,6 +28,11 @@ import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
 import Chat from '#/components/chat/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
+import SidebarLayout from '#/components/layout/sidebar/sidebarLayout';
+import {
+  ProjectsPanelContent,
+  type Project,
+} from '#/components/sidebar/panels/sidebarPanels';
 
 const DEFAULT_LAYOUT = [67, 33];
 const COLLAPSE_THRESHOLD = 1;
@@ -35,11 +40,14 @@ const MIN_PANEL_SIZE_DRAG = 5;
 const COLLAPSED_SIZE = 0;
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const projects = [
+  const projects: Project[] = [
     {
       id: '1',
+      userId: 'cma9bzpxj0002uc8kvztzin2r',
       name: 'Project 1',
-      description: 'Project 1 description',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      parentId: null,
     },
   ];
   return { projects };
@@ -215,121 +223,123 @@ export default function Projects() {
   );
 
   return (
-    <TwoColumnResizeLayout autoSaveId="dashboard-layout">
-      <TwoColumnResizeLayout.LeftPanel>
-        {!isMobile && (
-          <TwoColumnResizeLayout.LeftPanel.Actions>
-            <Breadcrumb>
-              <BreadcrumbList className="sm:gap-1.5">
-                <BreadcrumbItem>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <BreadcrumbLink href="#">Playground</BreadcrumbLink>
-                  </motion.div>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Chat</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </TwoColumnResizeLayout.LeftPanel.Actions>
-        )}
-        <div className="flex-1 lg:p-3 flex flex-col">
-          {isMobile ? (
-            <Tabs
-              value={activeTab}
-              onValueChange={handleTabChange}
-              className="h-full flex flex-col"
-            >
-              <TabsList
-                className={cn(
-                  'grid grid-cols-4 w-full h-8 bg-gray-100/50 dark:bg-gray-900/70 backdrop-blur-sm border border-white/30 dark:border-gray-700/30 rounded-lg p-1',
-                  'mb-2'
-                )}
-              >
-                <TabsTrigger
-                  value="chat"
-                  className={cn(
-                    'h-6 text-xs font-medium tracking-wide',
-                    'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
-                    'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
-                    'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
-                    'transition-all duration-200 ease-out'
-                  )}
-                >
-                  Chat
-                </TabsTrigger>
-                <TabsTrigger
-                  value="editor"
-                  className={cn(
-                    'h-6 text-xs font-medium tracking-wide',
-                    'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
-                    'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
-                    'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
-                    'transition-all duration-200 ease-out'
-                  )}
-                >
-                  Editor
-                </TabsTrigger>
-                <TabsTrigger
-                  value="summary"
-                  className={cn(
-                    'h-6 text-xs font-medium tracking-wide',
-                    'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
-                    'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
-                    'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
-                    'transition-all duration-200 ease-out'
-                  )}
-                >
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger
-                  value="notes"
-                  className={cn(
-                    'h-6 text-xs font-medium tracking-wide',
-                    'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
-                    'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
-                    'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
-                    'transition-all duration-200 ease-out'
-                  )}
-                >
-                  Notes
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="chat" className="flex-1 m-0">
-                <Chat />
-              </TabsContent>
-              <TabsContent value="editor" className="flex-1 m-0">
-                <Outlet />
-              </TabsContent>
-              <TabsContent value="summary" className="flex-1 m-0">
-                <Outlet />
-              </TabsContent>
-              <TabsContent value="notes" className="flex-1 m-0">
-                <Outlet />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <Chat />
+    <SidebarLayout content={<ProjectsPanelContent projects={data.projects} />}>
+      <TwoColumnResizeLayout autoSaveId="dashboard-layout">
+        <TwoColumnResizeLayout.LeftPanel>
+          {!isMobile && (
+            <TwoColumnResizeLayout.LeftPanel.Actions>
+              <Breadcrumb>
+                <BreadcrumbList className="sm:gap-1.5">
+                  <BreadcrumbItem>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <BreadcrumbLink href="#">Playground</BreadcrumbLink>
+                    </motion.div>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>Chat</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </TwoColumnResizeLayout.LeftPanel.Actions>
           )}
-        </div>
-      </TwoColumnResizeLayout.LeftPanel>
-      {!isMobile && (
-        <TwoColumnResizeLayout.RightPanel>
-          <TwoColumnResizeLayout.RightPanel.Title>
-            Project
-          </TwoColumnResizeLayout.RightPanel.Title>
-          <TwoColumnResizeLayout.RightPanel.Actions>
-            {rightPanelActions}
-          </TwoColumnResizeLayout.RightPanel.Actions>
-          <div className="flex-1 p-4 lg:p-5">
-            <Outlet />
+          <div className="flex-1 lg:p-3 flex flex-col">
+            {isMobile ? (
+              <Tabs
+                value={activeTab}
+                onValueChange={handleTabChange}
+                className="h-full flex flex-col"
+              >
+                <TabsList
+                  className={cn(
+                    'grid grid-cols-4 w-full h-8 bg-gray-100/50 dark:bg-gray-900/70 backdrop-blur-sm border border-white/30 dark:border-gray-700/30 rounded-lg p-1',
+                    'mb-2'
+                  )}
+                >
+                  <TabsTrigger
+                    value="chat"
+                    className={cn(
+                      'h-6 text-xs font-medium tracking-wide',
+                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
+                      'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
+                      'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
+                      'transition-all duration-200 ease-out'
+                    )}
+                  >
+                    Chat
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="editor"
+                    className={cn(
+                      'h-6 text-xs font-medium tracking-wide',
+                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
+                      'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
+                      'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
+                      'transition-all duration-200 ease-out'
+                    )}
+                  >
+                    Editor
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="summary"
+                    className={cn(
+                      'h-6 text-xs font-medium tracking-wide',
+                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
+                      'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
+                      'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
+                      'transition-all duration-200 ease-out'
+                    )}
+                  >
+                    Summary
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="notes"
+                    className={cn(
+                      'h-6 text-xs font-medium tracking-wide',
+                      'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/10 data-[state=active]:to-purple-500/10',
+                      'data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-blue-500/20',
+                      'text-gray-900 dark:text-gray-200 hover:bg-white/30 dark:hover:bg-gray-700/30 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] hover:scale-105',
+                      'transition-all duration-200 ease-out'
+                    )}
+                  >
+                    Notes
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="chat" className="flex-1 m-0">
+                  <Chat />
+                </TabsContent>
+                <TabsContent value="editor" className="flex-1 m-0">
+                  <Outlet />
+                </TabsContent>
+                <TabsContent value="summary" className="flex-1 m-0">
+                  <Outlet />
+                </TabsContent>
+                <TabsContent value="notes" className="flex-1 m-0">
+                  <Outlet />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <Chat />
+            )}
           </div>
-        </TwoColumnResizeLayout.RightPanel>
-      )}
-    </TwoColumnResizeLayout>
+        </TwoColumnResizeLayout.LeftPanel>
+        {!isMobile && (
+          <TwoColumnResizeLayout.RightPanel>
+            <TwoColumnResizeLayout.RightPanel.Title>
+              Project
+            </TwoColumnResizeLayout.RightPanel.Title>
+            <TwoColumnResizeLayout.RightPanel.Actions>
+              {rightPanelActions}
+            </TwoColumnResizeLayout.RightPanel.Actions>
+            <div className="flex-1 p-4 lg:p-5">
+              <Outlet />
+            </div>
+          </TwoColumnResizeLayout.RightPanel>
+        )}
+      </TwoColumnResizeLayout>
+    </SidebarLayout>
   );
 }
