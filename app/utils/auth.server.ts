@@ -1,5 +1,5 @@
 import { redirect } from 'react-router';
-import type { User } from 'types/appTypes';
+import type { User } from '#/types/appTypes';
 
 // --- Need to IMPLEMENT THESE BASED ON MY AUTH SOLUTION KCD COURSE EPIC WEB DEV---
 

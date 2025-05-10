@@ -1,9 +1,7 @@
 import { useLoaderData, type LoaderFunctionArgs, Outlet } from 'react-router';
 import AppLayout from '#/components/layout/sidebar/appLayout';
-import {
-  ProjectsPanelContent,
-  type Project,
-} from '#/components/sidebar/panels/sidebarPanels';
+import { ProjectsPanelContent } from '#/components/sidebar/panels/projectsPanelContent';
+import type { Project } from '#/types/appTypes';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const projects: Project[] = [
@@ -13,6 +11,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
       name: 'Project 1',
       createdAt: new Date(),
       updatedAt: new Date(),
+      parentId: null,
+      description: null,
+      starred: false,
+    },
+    {
+      id: '2',
+      userId: 'cma9bzpxj0002uc8kvztzin2r',
+      name: 'Project 2',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      description: null,
+      starred: false,
       parentId: null,
     },
   ];
