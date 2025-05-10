@@ -1,24 +1,22 @@
-import { useLoaderData, useParams } from 'react-router';
+import { useLoaderData, type LoaderFunctionArgs } from 'react-router';
+import ProjectMainLayout from '#/components/projects/projectsMain';
 
-export async function loader({ params }: { params: { projectId?: string } }) {
-  const response = await fetch(
-    `http://localhost:3001/projects/${params.projectId}`
-  );
-  if (!response.ok) throw new Error('Project not found');
-  const project = await response.json();
-  return { project };
+export async function projectDetailLoader({
+  params,
+}: LoaderFunctionArgs): Promise<any> {
+  const projectId = params.projectId;
+
+  console.log(`Loading details for project: ${projectId}`);
+  return {
+    projectData: { name: `Project ${projectId}` /* ... more data ... */ },
+  };
 }
 
-export default function ProjectDetails() {
-  const { project } = useLoaderData() as {
-    project: { id: string; name: string; badge: string };
-  };
+export default function ProjectDetailPage() {
+  // const { projectId, projectData } = useLoaderData() as any; // Cast to your loader's return type
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold">{project.name}</h2>
-      <p>Badge: {project.badge}</p>
-      <p>ID: {project.id}</p>
-    </div>
+    // Pass any necessary project-specific data to ProjectWorkspaceLayout if needed
+    <ProjectMainLayout /* projectId={projectId} projectData={projectData} */ />
   );
 }

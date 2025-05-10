@@ -409,7 +409,7 @@ export function ProjectsPanelContent({ projects }: ProjectsPanelContentProps) {
                   {/* Use NavLink to navigate to the project's detail/editor */}
                   {/* Adjust the `to` path as per your routing structure */}
                   <NavLink
-                    to={`/projects/${project.id}/editor`} // Example path
+                    to={`/projects/${project.id}`} // Example path
                     className={(
                       { isActive } // Use NavLink's isActive
                     ) =>

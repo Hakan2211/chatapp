@@ -28,7 +28,7 @@ import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
 import Chat from '#/components/chat/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
-import SidebarLayout from '#/components/layout/sidebar/sidebarLayout';
+import SidebarLayout from '#/components/layout/sidebar/appLayout';
 import { EducationPanelContent } from '#/components/sidebar/panels/sidebarPanels';
 
 const DEFAULT_LAYOUT = [67, 33];

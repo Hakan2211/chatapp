@@ -3,7 +3,7 @@ import { AppSidebar } from './appSidebar';
 import { SidebarInset, SidebarTrigger } from '#/components/ui/sidebar';
 import { TwoColumnProvider } from '#/context/twoColumnContext';
 
-function SidebarLayout({
+function AppLayout({
   children,
   content,
 }: {
@@ -13,6 +13,7 @@ function SidebarLayout({
   return (
     <>
       <AppSidebar content={content} />
+      {/* main content */}
       <SidebarInset>
         <header className="sticky top-0 flex shrink-0 bg-sidebar p-3">
           <SidebarTrigger className="-ml-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
@@ -27,4 +28,4 @@ function SidebarLayout({
   );
 }
 
-export default SidebarLayout;
+export default AppLayout;
