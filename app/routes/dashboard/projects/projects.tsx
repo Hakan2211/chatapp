@@ -25,6 +25,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       starred: false,
       parentId: null,
     },
+    {
+      id: '3',
+      userId: 'cma9bzpxj0002uc8kvztzin2r',
+      name: 'Project 3',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      description: null,
+      starred: false,
+      parentId: '1',
+    },
   ];
   return { projects };
 }

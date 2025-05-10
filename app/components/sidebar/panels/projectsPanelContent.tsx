@@ -31,48 +31,33 @@ export function ProjectsPanelContent({ projects }: ProjectsPanelContentProps) {
                   {/* Use NavLink to navigate to the project's detail/editor */}
                   {/* Adjust the `to` path as per your routing structure */}
                   <NavLink
-                    to={`/projects/${project.id}`} // Example path
-                    className={(
-                      { isActive } // Use NavLink's isActive
-                    ) =>
+                    to={`/projects/${project.id}`}
+                    className={({ isActive, isPending }) =>
                       cn(
-                        'block w-full' // Make the link fill the item
-                        // Remove default NavLink styling if SidebarMenuButton handles it
+                        'hover:bg-sidebar-accent rounded-md flex w-fit  text-[var(--sidebar-text-color)] items-center justify-start px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                       )
                     }
-                    // Prevent NavLink default style interfering with Button style
-                    style={({ isActive }) => ({
-                      textDecoration: 'none',
-                      color: 'inherit',
-                    })}
                   >
-                    {(
-                      { isActive } // Get isActive from NavLink render prop
-                    ) => (
-                      <SidebarMenuButton
-                        className={cn(
-                          'w-full justify-start px-4 py-2 text-sm', // Standard button styling
-                          isActive
-                            ? 'bg-black/5 dark:bg-white/10 text-primary'
-                            : 'hover:bg-black/[.03] dark:hover:bg-white/[.03]' // Active/hover states
-                        )}
-                        // Remove onClick if navigation is handled by NavLink
-                        // Add group/item if needed for hover actions on project level later
-                      >
+                    {({ isActive }) => (
+                      <>
                         {project.starred ? (
                           <Star className="h-3.5 w-3.5 mr-2 text-amber-400 fill-amber-400 flex-shrink-0" />
                         ) : (
                           // Use Folder icon or a placeholder for alignment
-                          <Folder className="h-3.5 w-3.5 mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                          // <span className="w-3.5 h-3.5 mr-2 flex-shrink-0"></span> // Alternative placeholder
+                          <Folder
+                            className={cn(
+                              'h-5 w-5 mr-2 text-gray-500 dark:text-gray-400 flex-shrink-0',
+                              isActive && 'text-sky-500 dark:text-sky-500'
+                            )}
+                          />
                         )}
                         <span className="truncate flex-1 font-medium">
                           {project.name}
                         </span>
-                        {/* Add project-level actions (e.g., delete, rename buttons) here if needed */}
-                        {/* Example: <ProjectActions project={project} /> */}
-                      </SidebarMenuButton>
+                      </>
                     )}
+                    {/* Add project-level actions (e.g., delete, rename buttons) here if needed */}
+                    {/* Example: <ProjectActions project={project} /> */}
                   </NavLink>
                 </SidebarMenuItem>
               ))
@@ -87,14 +72,14 @@ export function ProjectsPanelContent({ projects }: ProjectsPanelContentProps) {
       </SidebarGroup>
 
       {/* Keep the "New Project/File" button, but maybe rename it */}
-      <SidebarGroup className="mt-auto p-4 border-t border-[var(--sidebar-border-color)]">
+      {/* <SidebarGroup className="mt-auto p-4 border-t border-[var(--sidebar-border-color)]">
         <Button
           className="w-full rounded-md h-9 text-sm font-medium"
           onClick={() => console.log('Trigger New Project Action')} // Implement the actual action
         >
           <PlusCircle className="h-4 w-4 mr-2" /> New Project
         </Button>
-      </SidebarGroup>
+      </SidebarGroup> */}
     </>
   );
 }
