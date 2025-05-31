@@ -105,9 +105,11 @@ export default function Login({
                   <Button type="submit" className="w-full">
                     Login
                   </Button>
-                  <Button variant="outline" className="w-full">
-                    Login with Google
-                  </Button>
+                  <Link to="/auth/google">
+                    <Button variant="outline" className="w-full">
+                      Login with Google
+                    </Button>
+                  </Link>
                 </div>
                 <div className="mt-4 text-center text-sm">
                   Don&apos;t have an account?{' '}

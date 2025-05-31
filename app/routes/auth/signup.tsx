@@ -126,9 +126,11 @@ export default function SignUp({
                   <Button type="submit" className="w-full">
                     Sign Up
                   </Button>
-                  <Button variant="outline" className="w-full">
-                    Sign up with Google
-                  </Button>
+                  <Link to="/auth/google">
+                    <Button variant="outline" className="w-full">
+                      Sign up with Google
+                    </Button>
+                  </Link>
                 </div>
                 <div className="mt-4 text-center text-sm">
                   Already have an account?{' '}

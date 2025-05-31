@@ -43,6 +43,7 @@ export async function getUser(request: Request): Promise<User | null> {
       name: true,
       createdAt: true,
       updatedAt: true,
+      googleId: true,
       image: {
         select: {
           url: true,
@@ -67,10 +68,11 @@ export async function login({
       id: true,
       email: true,
       password: true,
+      googleId: true,
     },
   });
 
-  if (!user) {
+  if (!user || !user.password) {
     return { error: 'Invalid email or password' };
   }
 
@@ -98,9 +100,9 @@ export async function signup({
   username,
 }: {
   email: string;
-  password: string;
-  name: string;
-  username: string;
+  password?: string;
+  name?: string;
+  username?: string;
 }) {
   const existingUser = await prisma.user.findFirst({
     where: {
@@ -112,7 +114,10 @@ export async function signup({
     return { error: 'User already exists' };
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  let hashedPassword: string | undefined = undefined;
+  if (password) {
+    hashedPassword = await bcrypt.hash(password, 10);
+  }
 
   const user = await prisma.user.create({
     data: {
@@ -126,6 +131,7 @@ export async function signup({
       email: true,
       username: true,
       name: true,
+      googleId: true,
     },
   });
 

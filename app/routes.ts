@@ -14,6 +14,8 @@ export default [
     route('signup', './routes/auth/signup.tsx'),
     route('login', './routes/auth/login.tsx'),
     route('logout', './routes/auth/logout.tsx'),
+    route('google', './routes/auth/google.tsx'),
+    route('google/callback', './routes/auth/google.callback.tsx'),
   ]),
 
   //icon-sidebar with outlet for InformationSidebar
