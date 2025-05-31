@@ -17,6 +17,7 @@ model User {
   email     String   @unique
   username  String   @unique
   name      String?
+  password  String
   image     UserImage?
   projects  Project[]
   notes     Note[]

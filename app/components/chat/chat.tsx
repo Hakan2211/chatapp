@@ -79,7 +79,7 @@ export default function Chat({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 md:px-6 lg:px-8 py-5 backdrop-blur-md bg-white/10 dark:bg-black/10 border-b border-white/20">
+      <div className="flex-none px-4 md:px-6 lg:px-8 py-5 backdrop-blur-md bg-white/10 dark:bg-black/10 border-b border-white/20">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <ToggleGroup
@@ -160,7 +160,7 @@ export default function Chat({
       </ScrollArea>
 
       {/* Footer (Input Area) */}
-      <div className="border-t border-white/20 bg-background/80 backdrop-blur-md">
+      <div className="flex-none border-t border-white/20 bg-background/80 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-4">
           <div className="relative rounded-[20px] backdrop-blur-md bg-gradient-to-t from-background to-blue-500/5 bg-blue-500/10 dark:bg-black/10 border border-white/20 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
             <TextareaAutosize

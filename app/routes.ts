@@ -3,14 +3,24 @@ import {
   index,
   route,
   layout,
+  prefix,
 } from '@react-router/dev/routes';
 
 export default [
   index('./routes/landing.tsx'),
+
+  //auth
+  ...prefix('auth', [
+    route('signup', './routes/auth/signup.tsx'),
+    route('login', './routes/auth/login.tsx'),
+    route('logout', './routes/auth/logout.tsx'),
+  ]),
+
   //icon-sidebar with outlet for InformationSidebar
   layout('./routes/dashboard/layout.tsx', [
     route('dashboard', './routes/dashboard/index.tsx'),
     route('projects', './routes/dashboard/projects/projects.tsx', [
+      index('./routes/dashboard/projects/projects-index.tsx'),
       route(':projectId', './routes/dashboard/projects/projects-detail.tsx', [
         route(
           'chats/:chatId',

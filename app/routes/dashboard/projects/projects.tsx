@@ -18,17 +18,20 @@ import {
 import { useState } from 'react';
 import { MAX_PROJECT_NESTING_DEPTH } from '#/lib/project-tree-utils';
 import { prisma } from '#/utils/db.server';
+import { getUser } from '#/utils/auth.server';
 
 //--------------------------------------------------------- Loaders---------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------------
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // const userId = await requireUserId(request); // Replace with your actual auth
-  const userId = 'cma9bzpxj0002uc8kvztzin2r'; //placeholder for now
+  const user = await getUser(request);
+  if (!user) {
+    throw new Response('Unauthorized', { status: 401 });
+  }
 
   try {
     const flatProjectsFromDb = await prisma.project.findMany({
-      where: { userId },
+      where: { userId: user.id },
       orderBy: { createdAt: 'asc' }, // Or by name, etc.
     });
 
@@ -37,10 +40,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       flatProjectsFromDb as any
     ); // Cast if buildProjectTree expects your appTypes.Project
 
-    return { projects: projectTree, userId };
+    return { projects: projectTree, user };
   } catch (error) {
     console.error('Error fetching projects:', error);
-    return { projects: [], error: 'Failed to load projects.' };
+    return { projects: [], user, error: 'Failed to load projects.' };
   }
 }
 
@@ -229,12 +232,7 @@ export async function action({ request }: ActionFunctionArgs) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export default function Projects() {
-  const {
-    projects: rootProjects,
-    userId,
-    error,
-  } = useLoaderData<typeof loader>();
-  console.log(data, 'data');
+  const { projects, user } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const fetcher = useFetcher();
 
@@ -296,20 +294,19 @@ export default function Projects() {
   };
 
   return (
-    <>
-      <AppLayout
-        content={
-          <ProjectsPanelContent
-            rootProjects={rootProjects || []}
-            handleOpenAddNewSubProjectModal={handleOpenAddNewSubProjectModal}
-            handleOpenRenameProjectModal={handleOpenRenameProjectModal}
-            handleDeleteProject={handleDeleteProject}
-            handleAddChatToProject={handleAddChatToProject}
-          />
-        }
-      >
-        <Outlet />
-      </AppLayout>
-    </>
+    <AppLayout
+      content={
+        <ProjectsPanelContent
+          rootProjects={projects}
+          handleOpenAddNewSubProjectModal={handleOpenAddNewSubProjectModal}
+          handleOpenRenameProjectModal={handleOpenRenameProjectModal}
+          handleDeleteProject={handleDeleteProject}
+          handleAddChatToProject={handleAddChatToProject}
+        />
+      }
+      user={user}
+    >
+      <Outlet />
+    </AppLayout>
   );
 }
