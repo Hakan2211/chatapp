@@ -34,7 +34,7 @@ import { ToggleGroup, ToggleGroupItem } from '#/components/ui/toggle-group';
 import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar';
 import { Separator } from '#/components/ui/separator';
-
+import type { Message } from 'ai';
 const groupUsers = [
   {
     id: 'u1',
@@ -45,7 +45,13 @@ const groupUsers = [
   { id: 'u3', name: 'User 3', src: 'https://avatar.iran.liara.run/public/10' }, // Example with fallback
 ];
 
-export default function Chat() {
+export default function Chat({
+  handleSubmit,
+  messages,
+}: {
+  handleSubmit: (input: string) => void;
+  messages: Message[];
+}) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState('');
   const [currentModel, setCurrentModel] = useState('GPT-4 Omni');
@@ -54,11 +60,12 @@ export default function Chat() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView();
-  }, []);
+  }, [messages]);
 
   const handleSend = () => {
     if (!input.trim()) return;
-    console.log(`Sending message with model ${currentModel}:`, input);
+    // console.log(`Sending message with model ${currentModel}:`, input);
+    handleSubmit(input);
     setInput('');
   };
 
@@ -70,10 +77,9 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full shadow-md md:rounded-s-[inherit] bg-gradient-to-t from-white to-blue-50/30 dark:from-gray-900 dark:to-gray-800 min-[1024px]:rounded-e-3xl">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className=" py-5 backdrop-blur-md bg-white/10 dark:bg-black/10 sticky top-0 z-10 before:absolute before:inset-x-0 before:bottom-0 before:h-px before:bg-gradient-to-r before:from-blue-500/20 before:via-purple-500/20 before:to-blue-500/20">
-        {/* Header content */}
+      <div className="flex-none px-4 md:px-6 lg:px-8 py-5 backdrop-blur-md bg-white/10 dark:bg-black/10 border-b border-white/20">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <ToggleGroup
@@ -107,24 +113,17 @@ export default function Chat() {
             {/* Conditional Avatar Stack */}
             {chatMode === 'group' && (
               <div className="flex items-center -space-x-2">
-                {groupUsers.slice(0, 3).map(
-                  (
-                    user // Show max 3 avatars + overflow
-                  ) => (
-                    <Avatar
-                      key={user.id}
-                      className="h-8 w-8 border-2 border-background"
-                    >
-                      <AvatarImage
-                        src={user.src ?? undefined}
-                        alt={user.name}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {user.name?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  )
-                )}
+                {groupUsers.slice(0, 3).map((user) => (
+                  <Avatar
+                    key={user.id}
+                    className="h-8 w-8 border-2 border-background"
+                  >
+                    <AvatarImage src={user.src ?? undefined} alt={user.name} />
+                    <AvatarFallback className="text-xs">
+                      {user.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
                 {groupUsers.length > 3 && (
                   <Avatar className="h-8 w-8 border-2 border-background">
                     <AvatarFallback className="text-xs">
@@ -134,110 +133,48 @@ export default function Chat() {
                 )}
               </div>
             )}
-            {/* You might add SettingsPanelTrigger back here if needed */}
           </div>
         </div>
       </div>
-      <ScrollArea className="p-2 flex-1 w-full">
-        <div className="h-full flex flex-col px-4 md:px-6 lg:px-8">
-          {/* Chat */}
-        </div>
-        {/* Chat */}
-        <div className="relative grow">
-          {/* Chat message content */}
-          <div className="max-w-3xl mx-auto mt-6 space-y-6">
-            {/* ... Messages ... */}
-            <div className="text-center my-8">
-              <div className="inline-flex items-center gap-1.5 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-full border border-blue-400/50 dark:border-blue-500/50 shadow-sm text-xs font-medium py-1.5 px-3.5 text-foreground/90 dark:text-foreground/80 transition-all hover:border-blue-500/70 dark:hover:border-blue-600/70">
-                <RiShining2Line
-                  className="text-blue-500/80 dark:text-blue-400/80 -ms-0.5"
-                  size={14}
-                  aria-hidden="true"
-                />
-                Today
-              </div>
-            </div>
-            <ChatMessage isUser>
-              <p>Hey Ebru, what's up?</p>
-            </ChatMessage>
-            <ChatMessage>
-              <p>I'm good, thanks! How about you?</p>
-              <p>I am eating well and I had a great workout yesterday.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>
-                I'm glad to hear that! I'm working on a new project at work.
-              </p>
-              <p>
-                I'm also thinking about getting a new laptop. What do you think?
-              </p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>Sounds like you're busy! I'm just checking in.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>Anything planned for the weekend?</p>
-            </ChatMessage>
-            <ChatMessage>
-              <p>
-                I'm thinking of going to the gym and then maybe grabbing a
-                coffee with Funda.
-              </p>
-              <p>Or maybe a tea with her.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>Sounds like a plan! I'm sure you'll have a great time.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>What about you?</p>
-            </ChatMessage>
-            <ChatMessage>
-              <p>I will read a book and maybe go for a walk.</p>
-              <p>Or just watch a movie.</p>
-            </ChatMessage>
-            <ChatMessage>
-              <p>Which film?</p>
-              <p>I'm thinking of watching The Dark Knight.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>I'm sure you'll enjoy it.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>Have you heard something about Filiz?</p>
-            </ChatMessage>
-            <ChatMessage>
-              <p>No, I haven't. What's up?</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>I'm not sure. I'm just curious.</p>
-            </ChatMessage>
-            <ChatMessage isUser>
-              <p>Oh, no problem.</p>
-            </ChatMessage>
 
-            <div ref={messagesEndRef} aria-hidden="true" />
+      {/* Messages Area */}
+      <ScrollArea className="flex-1 min-h-0 w-full shadow-md md:rounded-s-[inherit] bg-gradient-to-t from-white to-blue-50/30 dark:from-gray-900 dark:to-gray-800 min-[1024px]:rounded-e-3xl">
+        <div className="max-w-3xl mx-auto mt-6 space-y-6 px-4 md:px-6 lg:px-8 pb-4">
+          <div className="text-center my-8">
+            <div className="inline-flex items-center gap-1.5 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-full border border-blue-400/50 dark:border-blue-500/50 shadow-sm text-xs font-medium py-1.5 px-3.5 text-foreground/90 dark:text-foreground/80 transition-all hover:border-blue-500/70 dark:hover:border-blue-600/70">
+              <RiShining2Line
+                className="text-blue-500/80 dark:text-blue-400/80 -ms-0.5"
+                size={14}
+                aria-hidden="true"
+              />
+              Today
+            </div>
           </div>
-        </div>{' '}
-      </ScrollArea>{' '}
-      {/* Footer */}
-      <div className=" p-2 sticky bottom-0 pt-4 md:pt-8 z-50">
-        <div className="max-w-3xl mx-auto bg-background rounded-[20px] pb-4 md:pb-8">
+          {messages.map((message, index) => (
+            <ChatMessage key={index} isUser={message.role === 'user'}>
+              <p>{message.content}</p>
+            </ChatMessage>
+          ))}
+          <div ref={messagesEndRef} aria-hidden="true" />
+        </div>
+      </ScrollArea>
+
+      {/* Footer (Input Area) */}
+      <div className="flex-none border-t border-white/20 bg-background/80 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-4">
           <div className="relative rounded-[20px] backdrop-blur-md bg-gradient-to-t from-background to-blue-500/5 bg-blue-500/10 dark:bg-black/10 border border-white/20 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
             <TextareaAutosize
-              // Removed fixed height class like sm:min-h-[84px]
-              className="flex w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed" // Keep other styles, ensure resize-none is present
-              placeholder="Ask me anything... (Shift+Enter for newline)" // Updated placeholder
+              className="flex w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed"
+              placeholder="Ask me anything... (Shift+Enter for newline)"
               aria-label="Enter your prompt"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              minRows={1} // Minimum height of 1 row
-              maxRows={6} // Maximum height of 6 rows before scrolling starts *within* the textarea
-              // Add any other textarea props you need
+              minRows={1}
+              maxRows={6}
             />
             {/* Textarea buttons */}
             <div className="flex items-center justify-between gap-2 p-3">
-              {/* Left buttons */}
               <div className="flex items-center gap-1">
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
@@ -283,7 +220,6 @@ export default function Chat() {
                 </TooltipProvider>
                 <TooltipProvider delayDuration={100}>
                   <DropdownMenu>
-                    {/* Wrap the actual button in TooltipTrigger AND DropdownMenuTrigger */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <DropdownMenuTrigger asChild>
@@ -346,9 +282,6 @@ export default function Chat() {
 
               {/* Right buttons */}
               <div className="flex items-center gap-2">
-                {/* Model Switcher using DropdownMenu */}
-
-                {/* Send Button */}
                 <TooltipProvider delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>

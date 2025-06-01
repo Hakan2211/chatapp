@@ -6,8 +6,16 @@ import NavigationSidebar, {
 } from './navigationSidebar';
 import ContentSidebar from './contentSidebar';
 import { useLocation } from 'react-router';
+import type { User } from '#/types/appTypes';
 
-export function AppSidebar({ content, ...props }: { content: JSX.Element }) {
+export function AppSidebar({
+  content,
+  user,
+  ...props
+}: {
+  content: JSX.Element;
+  user: User;
+}) {
   const location = useLocation();
   const [currentActivePanel, setCurrentActivePanel] = useState<PanelType>(
     PanelType.Home
@@ -42,7 +50,7 @@ export function AppSidebar({ content, ...props }: { content: JSX.Element }) {
       className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row border-[var(--sidebar-border-color)]"
       {...props}
     >
-      <NavigationSidebar onPanelSelect={handlePanelSelect} />
+      <NavigationSidebar onPanelSelect={handlePanelSelect} user={user} />
       <ContentSidebar content={content} activePanelType={currentActivePanel} />
     </Sidebar>
   );

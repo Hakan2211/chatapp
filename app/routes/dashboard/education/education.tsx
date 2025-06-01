@@ -28,19 +28,31 @@ import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
 import Chat from '#/components/chat/chat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
-import SidebarLayout from '#/components/layout/sidebar/appLayout';
+
 import { EducationPanelContent } from '#/components/sidebar/panels/educationPanelContent';
+import { getUser } from '#/utils/auth.server';
+
+import AppLayout from '#/components/layout/sidebar/appLayout';
+import type { Message } from 'ai';
 
 const DEFAULT_LAYOUT = [67, 33];
 const COLLAPSE_THRESHOLD = 1;
 const MIN_PANEL_SIZE_DRAG = 5;
 const COLLAPSED_SIZE = 0;
 
-export async function loader({ request }: LoaderFunctionArgs) {}
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await getUser(request);
+  if (!user) {
+    throw new Response('Unauthorized', { status: 401 });
+  }
+
+  return { user };
+}
 
 export default function Education() {
+  const { user } = useLoaderData<typeof loader>();
   const data = useLoaderData<typeof loader>();
-  console.log(data, 'data');
+  const [messages, setMessages] = useState<Message[]>([]);
   const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
   const firstPanelRef = useRef<ImperativePanelHandle>(null);
   const secondPanelRef = useRef<ImperativePanelHandle>(null);
@@ -132,6 +144,24 @@ export default function Education() {
     }
   };
 
+  const handleSubmit = (input: string) => {
+    // Add the user message
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: 'user', content: input },
+    ]);
+    // TODO: Add your chat logic here to get AI response
+    // For now, just add a mock response
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'This is a mock response',
+      },
+    ]);
+  };
+
   // Right panel actions (navigation links and reset button)
   const rightPanelActions = (
     <>
@@ -208,7 +238,7 @@ export default function Education() {
   );
 
   return (
-    <SidebarLayout content={<EducationPanelContent />}>
+    <AppLayout content={<EducationPanelContent />} user={user}>
       <TwoColumnResizeLayout autoSaveId="dashboard-layout">
         <TwoColumnResizeLayout.LeftPanel>
           {!isMobile && (
@@ -231,7 +261,7 @@ export default function Education() {
               </Breadcrumb>
             </TwoColumnResizeLayout.LeftPanel.Actions>
           )}
-          <div className="flex-1 lg:p-3 flex flex-col">
+          <div className="flex-1 h-full min-h-0 flex flex-col">
             {isMobile ? (
               <Tabs
                 value={activeTab}
@@ -294,7 +324,7 @@ export default function Education() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="chat" className="flex-1 m-0">
-                  <Chat />
+                  <Chat handleSubmit={handleSubmit} messages={messages} />
                 </TabsContent>
                 <TabsContent value="editor" className="flex-1 m-0">
                   <Outlet />
@@ -307,7 +337,7 @@ export default function Education() {
                 </TabsContent>
               </Tabs>
             ) : (
-              <Chat />
+              <Chat handleSubmit={handleSubmit} messages={messages} />
             )}
           </div>
         </TwoColumnResizeLayout.LeftPanel>
@@ -325,6 +355,6 @@ export default function Education() {
           </TwoColumnResizeLayout.RightPanel>
         )}
       </TwoColumnResizeLayout>
-    </SidebarLayout>
+    </AppLayout>
   );
 }

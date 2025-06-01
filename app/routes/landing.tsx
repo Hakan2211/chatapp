@@ -49,7 +49,11 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link to="/dashboard">dashboard</Link>
+            <nav className="flex gap-2">
+              <Link to="/dashboard">dashboard</Link>
+              <Link to="/auth/login">login</Link>
+              <Link to="/auth/signup">signup</Link>
+            </nav>
           </nav>
         </div>
       </div>

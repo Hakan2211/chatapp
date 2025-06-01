@@ -11,8 +11,15 @@ import {
 import { Sidebar } from '#/components/ui/sidebar';
 import { cloneElement, useEffect, useState } from 'react';
 import UserDropdown from '#/components/layout/sidebar/user-dropdown';
-import { Home, LayoutGrid, FileText, GraduationCap, User } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router';
+import {
+  Home,
+  LayoutGrid,
+  FileText,
+  GraduationCap,
+  User as UserIcon,
+} from 'lucide-react';
+import { NavLink, useLocation, useLoaderData } from 'react-router';
+import type { User } from '#/types/appTypes';
 
 export enum PanelType {
   Account = 'account',
@@ -20,6 +27,7 @@ export enum PanelType {
   Projects = 'projects',
   Notes = 'notes',
   Education = 'education',
+  Profile = 'Profile',
 }
 
 const iconSize = 'h-5 w-5';
@@ -51,11 +59,15 @@ export const iconBarIcons = [
   },
 ];
 
+export interface NavigationSidebarProps {
+  onPanelSelect: (panelType: PanelType) => void;
+  user: User;
+}
+
 export default function NavigationSidebar({
   onPanelSelect,
-}: {
-  onPanelSelect: (panelType: PanelType) => void;
-}) {
+  user,
+}: NavigationSidebarProps) {
   const location = useLocation();
   const [selectedPanel, setSelectedPanel] = useState<PanelType>(PanelType.Home);
 
@@ -92,10 +104,12 @@ export default function NavigationSidebar({
             >
               <div>
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground rounded-lg">
-                  <UserDropdown />
+                  <UserDropdown user={user} />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">John Doe</span>
+                  <span className="truncate font-semibold">
+                    {user.name || user.username}
+                  </span>
                   <span className="truncate text-xs">Free</span>
                 </div>
               </div>
@@ -125,7 +139,9 @@ export default function NavigationSidebar({
                     <NavLink
                       className="cursor-pointer block"
                       to={item.path}
-                      end={item.path === '/dashboard'}
+                      end={
+                        item.path === '/dashboard' || item.path === '/education'
+                      }
                     >
                       {cloneElement(item.icon, {
                         className: iconSize,
@@ -142,7 +158,7 @@ export default function NavigationSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={() => onPanelSelect(PanelType.Account)}>
-              <User className="h-5 w-5" />
+              <UserIcon className="h-5 w-5" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
