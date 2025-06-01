@@ -1,15 +1,27 @@
-import { Outlet, useLoaderData, redirect, useActionData } from 'react-router';
+import {
+  Outlet,
+  useLoaderData,
+  redirect,
+  useActionData,
+  useNavigation,
+} from 'react-router';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { formatUserDate } from '#/lib/utils';
-import { getUser } from '#/utils/auth.server';
-import { deleteUserById, updateUserById } from '#/utils/user.server'; // Add updateUserById
+// ... other imports from your original file
+import { AlertCircle } from 'lucide-react'; // Import AlertCircle
 import AppLayout from '#/components/layout/sidebar/appLayout';
 import ProfilePanelContent from '#/components/sidebar/panels/profilePanelContent';
 import type { User as PrismaUser } from '@prisma/client';
+import { getUser } from '#/utils/auth.server';
+
+import { updateUserById } from '#/utils/user.server';
+import { deleteUserById } from '#/utils/user.server';
+
+// ... (ProfileLoaderData, loader, ProfileActionData, action function remain the same) ...
+// Ensure ProfileActionData and your action function are correctly defined as in your original code.
 
 export interface ProfileLoaderData {
   user: PrismaUser;
-  formattedDate: string;
+  // formattedDate: string; // This was in your original, ensure it's used or remove if not
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -20,17 +32,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { user } as ProfileLoaderData;
 }
 
-// Define a more specific type for action data
 export interface ProfileActionData {
   success?: boolean;
-  field?: 'name' | 'username' | 'account'; // To identify which operation was attempted
-  message?: string; // General success or error message
+  field?: 'name' | 'username' | 'account';
+  message?: string;
   errors?: {
     name?: string;
     username?: string;
-    form?: string; // For delete account errors
+    form?: string;
   };
-  // values are less critical here since we reload, but can be useful
   values?: {
     name?: string;
     username?: string;
@@ -40,6 +50,8 @@ export interface ProfileActionData {
 export async function action({
   request,
 }: ActionFunctionArgs): Promise<Response | ProfileActionData> {
+  // ... (Your existing action logic)
+  // Ensure this is identical to your working action logic
   const user = await getUser(request);
   if (!user) {
     return redirect('/auth/login');
@@ -51,12 +63,13 @@ export async function action({
   if (intent === 'deleteAccount') {
     try {
       await deleteUserById(user.id);
+      // Consider redirecting to a page that confirms account deletion or homepage
       return redirect('/auth/signup');
     } catch (error) {
       console.error('Failed to delete account:', error);
       return {
         field: 'account',
-        errors: { form: 'Failed to delete account. Please try again.' },
+        errors: { form: 'Failed to delete account. Please try again later.' },
       };
     }
   }
@@ -70,6 +83,14 @@ export async function action({
         values: { name: name || undefined },
       };
     }
+    if (name.trim().length > 50) {
+      // Example validation
+      return {
+        field: 'name',
+        errors: { name: 'Name cannot exceed 50 characters.' },
+        values: { name },
+      };
+    }
     try {
       await updateUserById(user.id, { name: name.trim() });
       return {
@@ -81,7 +102,7 @@ export async function action({
       console.error('Failed to update name:', error);
       return {
         field: 'name',
-        errors: { name: 'Failed to update name.' },
+        errors: { name: 'Could not update name. Please try again.' },
         values: { name },
       };
     }
@@ -96,7 +117,17 @@ export async function action({
         values: { username: username || undefined },
       };
     }
-    // Add more username validation (e.g., uniqueness, format)
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username.trim())) {
+      // Example validation
+      return {
+        field: 'username',
+        errors: {
+          username:
+            'Username must be 3-20 characters, letters, numbers, or underscores.',
+        },
+        values: { username },
+      };
+    }
     try {
       await updateUserById(user.id, { username: username.trim() });
       return {
@@ -115,31 +146,35 @@ export async function action({
       }
       return {
         field: 'username',
-        errors: { username: 'Failed to update username.' },
+        errors: { username: 'Could not update username. Please try again.' },
         values: { username },
       };
     }
   }
 
-  return new Response('Invalid intent', { status: 400 });
+  return new Response('Invalid operation intent.', { status: 400 });
 }
 
 export default function Profile() {
   const { user } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>(); // Use specific type
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
 
   return (
     <AppLayout content={<ProfilePanelContent />} user={user}>
-      {/* General form error for delete, specific field errors handled in ProfileIndex */}
-      {actionData?.field === 'account' && actionData?.errors?.form && (
-        <div
-          className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg"
-          role="alert"
-        >
-          {actionData.errors.form}
-        </div>
-      )}
-      <Outlet context={{ user }} /> {/* Pass user to child routes */}
+      {/* Global error toast for account deletion issues from action */}
+      {actionData?.field === 'account' &&
+        actionData?.errors?.form &&
+        navigation.state === 'idle' && (
+          <div
+            className="fixed top-5 right-5 z-[100] p-3.5 mb-4 text-sm bg-red-500/10 dark:bg-red-600/20 text-red-700 dark:text-red-300 rounded-lg shadow-xl flex items-center space-x-2 animate-fadeIn select-none"
+            role="alert"
+          >
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <span>{actionData.errors.form}</span>
+          </div>
+        )}
+      <Outlet context={{ user }} />
     </AppLayout>
   );
 }
