@@ -6,22 +6,23 @@ import {
   useNavigation,
 } from 'react-router';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-// ... other imports from your original file
-import { AlertCircle } from 'lucide-react'; // Import AlertCircle
+
+import { getUser } from '#/utils/auth.server';
+import { deleteUserById, updateUserById } from '#/utils/user.server';
+import { updateUserProfileImage } from '#/utils/user.server'; // Import the new function
 import AppLayout from '#/components/layout/sidebar/appLayout';
 import ProfilePanelContent from '#/components/sidebar/panels/profilePanelContent';
 import type { User as PrismaUser } from '@prisma/client';
-import { getUser } from '#/utils/auth.server';
+import { AlertCircle } from 'lucide-react';
 
-import { updateUserById } from '#/utils/user.server';
-import { deleteUserById } from '#/utils/user.server';
-
-// ... (ProfileLoaderData, loader, ProfileActionData, action function remain the same) ...
-// Ensure ProfileActionData and your action function are correctly defined as in your original code.
-
+export type User = Omit<PrismaUser, 'password'> & {
+  image?: {
+    url: string;
+  } | null;
+};
+// ... (ProfileLoaderData interface and loader function remain the same) ...
 export interface ProfileLoaderData {
-  user: PrismaUser;
-  // formattedDate: string; // This was in your original, ensure it's used or remove if not
+  user: User;
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -29,47 +30,125 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (!user) {
     return redirect('/auth/signup');
   }
-  return { user } as ProfileLoaderData;
+  // Explicitly cast to ensure the nested image structure is understood by TypeScript
+  return { user: user as ProfileLoaderData['user'] };
 }
 
+// Update ProfileActionData
 export interface ProfileActionData {
   success?: boolean;
-  field?: 'name' | 'username' | 'account';
+  field?: 'name' | 'username' | 'account' | 'profileImage'; // Added profileImage
   message?: string;
   errors?: {
     name?: string;
     username?: string;
-    form?: string;
+    form?: string; // For delete account errors
+    profileImage?: string; // For image upload errors
   };
   values?: {
     name?: string;
     username?: string;
   };
+  updatedImageUrl?: string | null; // To pass back new image URL
 }
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
 
 export async function action({
   request,
 }: ActionFunctionArgs): Promise<Response | ProfileActionData> {
-  // ... (Your existing action logic)
-  // Ensure this is identical to your working action logic
   const user = await getUser(request);
   if (!user) {
     return redirect('/auth/login');
   }
 
+  // For Remix 2.8+ formData handles multipart directly
   const formData = await request.formData();
   const intent = formData.get('intent') as string;
 
+  // For older Remix versions:
+  // const uploadHandler = unstable_createMemoryUploadHandler({
+  //   maxPartSize: MAX_IMAGE_SIZE,
+  // });
+  // const formData = await unstable_parseMultipartFormData(request, uploadHandler);
+  // const intent = formData.get('intent') as string;
+
+  if (intent === 'updateProfileImage') {
+    const imageFile = formData.get('profileImage') as File | null; // For Remix 2.8+ File type
+    // const imageFile = formData.get('profileImage') as NodeOnDiskFile | null; // For older Remix with unstable_NodeOnDiskFile
+
+    if (!imageFile || imageFile.size === 0) {
+      return {
+        field: 'profileImage',
+        errors: { profileImage: 'Please select an image file.' },
+      };
+    }
+
+    if (imageFile.size > MAX_IMAGE_SIZE) {
+      return {
+        field: 'profileImage',
+        errors: {
+          profileImage: `Image size cannot exceed ${
+            MAX_IMAGE_SIZE / 1024 / 1024
+          }MB.`,
+        },
+      };
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(imageFile.type)) {
+      return {
+        field: 'profileImage',
+        errors: {
+          profileImage:
+            'Invalid image format. Only JPG, PNG, GIF, WEBP are allowed.',
+        },
+      };
+    }
+
+    try {
+      const imageBuffer = await imageFile.arrayBuffer();
+      const updatedImage = await updateUserProfileImage(user.id, {
+        blob: Buffer.from(imageBuffer),
+        contentType: imageFile.type,
+        altText: `${user.name || user.username || 'User'}'s profile picture`,
+      });
+
+      const result: ProfileActionData = {
+        success: true,
+        field: 'profileImage',
+        message: 'Profile image updated successfully.',
+        updatedImageUrl: updatedImage.url,
+      };
+      console.log('PROFILE ACTION - updateProfileImage success:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to update profile image:', error);
+      return {
+        field: 'profileImage',
+        errors: {
+          profileImage: 'Failed to update profile image. Please try again.',
+        },
+      };
+    }
+  }
+
+  // ... (your existing intents: deleteAccount, updateName, updateUsername)
   if (intent === 'deleteAccount') {
+    // ... your delete account logic
     try {
       await deleteUserById(user.id);
-      // Consider redirecting to a page that confirms account deletion or homepage
       return redirect('/auth/signup');
     } catch (error) {
       console.error('Failed to delete account:', error);
       return {
         field: 'account',
-        errors: { form: 'Failed to delete account. Please try again later.' },
+        errors: { form: 'Failed to delete account. Please try again.' },
       };
     }
   }
@@ -84,7 +163,6 @@ export async function action({
       };
     }
     if (name.trim().length > 50) {
-      // Example validation
       return {
         field: 'name',
         errors: { name: 'Name cannot exceed 50 characters.' },
@@ -102,7 +180,7 @@ export async function action({
       console.error('Failed to update name:', error);
       return {
         field: 'name',
-        errors: { name: 'Could not update name. Please try again.' },
+        errors: { name: 'Failed to update name.' },
         values: { name },
       };
     }
@@ -118,12 +196,11 @@ export async function action({
       };
     }
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(username.trim())) {
-      // Example validation
       return {
         field: 'username',
         errors: {
           username:
-            'Username must be 3-20 characters, letters, numbers, or underscores.',
+            'Username must be 3-20 characters (letters, numbers, or underscores).',
         },
         values: { username },
       };
@@ -146,26 +223,33 @@ export async function action({
       }
       return {
         field: 'username',
-        errors: { username: 'Could not update username. Please try again.' },
+        errors: { username: 'Failed to update username.' },
         values: { username },
       };
     }
   }
 
-  return new Response('Invalid operation intent.', { status: 400 });
+  return new Response('Invalid intent', { status: 400 });
 }
 
+// Profile component using useNavigation
 export default function Profile() {
   const { user } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  const navigation = useNavigation();
+  const navigation = useNavigation(); // Get navigation state
+
+  // Check if the account deletion was specifically what was submitted
+  const isDeletingAccount =
+    navigation.state === 'submitting' &&
+    navigation.formData?.get('intent') === 'deleteAccount';
 
   return (
     <AppLayout content={<ProfilePanelContent />} user={user}>
-      {/* Global error toast for account deletion issues from action */}
+      {/* Global error toast for account deletion issues, only if not actively submitting for it */}
       {actionData?.field === 'account' &&
         actionData?.errors?.form &&
-        navigation.state === 'idle' && (
+        navigation.state === 'idle' && // Show only when idle
+        !isDeletingAccount && ( // And not if we just tried to delete
           <div
             className="fixed top-5 right-5 z-[100] p-3.5 mb-4 text-sm bg-red-500/10 dark:bg-red-600/20 text-red-700 dark:text-red-300 rounded-lg shadow-xl flex items-center space-x-2 animate-fadeIn select-none"
             role="alert"

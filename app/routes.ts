@@ -18,6 +18,8 @@ export default [
     route('google/callback', './routes/auth/google.callback.tsx'),
   ]),
 
+  route('images/user/:userId', './routes/resources/user-image.tsx'),
+
   //icon-sidebar with outlet for InformationSidebar
   layout('./routes/dashboard/layout.tsx', [
     route('dashboard', './routes/dashboard/index.tsx'),
