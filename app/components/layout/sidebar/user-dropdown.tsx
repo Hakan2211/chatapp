@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu';
-import { Form } from 'react-router';
+import { Form, Link } from 'react-router';
 import type { User } from '#/types/appTypes';
 
 import LogoutCircleIcon from '#/components/icons/logoutCircle';
@@ -68,7 +68,9 @@ export default function UserDropdown({ user }: UserDropdownProps) {
             className="text-muted-foreground/70"
             aria-hidden="true"
           />
-          <span>Profile</span>
+          <Link to="/profile">
+            <span>Profile</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-3 px-1">
           <PulseLineIcon

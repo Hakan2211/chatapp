@@ -27,6 +27,7 @@ export enum PanelType {
   Projects = 'projects',
   Notes = 'notes',
   Education = 'education',
+  Profile = 'Profile',
 }
 
 const iconSize = 'h-5 w-5';

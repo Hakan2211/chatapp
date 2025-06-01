@@ -6,17 +6,7 @@ import {
   useNavigate,
   type LoaderFunctionArgs,
 } from 'react-router';
-import TwoColumnResizeLayout from '#/components/layout/mainOutlet/twoColumnResizeLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '#/components/ui/breadcrumb';
-import { motion } from 'framer-motion';
 import { cn } from '#/lib/utils';
 import { HeaderButton } from '#/components/layout/mainOutlet/headerButton';
 import { Columns2Icon } from 'lucide-react';
@@ -26,9 +16,7 @@ import type {
 } from 'react-resizable-panels';
 import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
-import Chat from '#/components/chat/chat';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
-import SidebarLayout from '#/components/layout/sidebar/appLayout';
+
 import { NotesPanelContent } from '#/components/sidebar/panels/notesPanelContent';
 import { getUser } from '#/utils/auth.server';
 import { prisma } from '#/utils/db.server';

@@ -37,5 +37,8 @@ export default [
 
     route('notes', './routes/dashboard/notes/notes.tsx'),
     route('education', './routes/dashboard/education/education.tsx'),
+    route('profile', './routes/dashboard/profile/profile.tsx', [
+      index('./routes/dashboard/profile/profile-index.tsx'),
+    ]),
   ]),
 ] satisfies RouteConfig;
