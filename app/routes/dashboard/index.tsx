@@ -5,6 +5,7 @@ import {
   useLocation,
   useNavigate,
   type LoaderFunctionArgs,
+  type ActionFunctionArgs,
 } from 'react-router';
 import TwoColumnResizeLayout from '#/components/layout/mainOutlet/twoColumnResizeLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,6 +17,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '#/components/ui/breadcrumb';
+import { useLatest } from 'ahooks';
 import { motion } from 'framer-motion';
 import { cn } from '#/lib/utils';
 import { HeaderButton } from '#/components/layout/mainOutlet/headerButton';
@@ -24,29 +26,72 @@ import type {
   ImperativePanelHandle,
   PanelGroupOnLayout,
 } from 'react-resizable-panels';
+import { createOpenAI } from '@ai-sdk/openai';
 import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
 import Chat from '#/components/chat/chat';
+import { generateText } from 'ai';
+import { useChat } from '@ai-sdk/react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
-import SidebarLayout from '#/components/layout/sidebar/appLayout';
+import AppLayout from '#/components/layout/sidebar/appLayout';
 import { HomePanelContent } from '#/components/sidebar/panels/homePanelContent';
+
+import { getUser } from '#/utils/auth.server';
+import { prisma } from '#/utils/db.server';
 
 const DEFAULT_LAYOUT = [67, 33];
 const COLLAPSE_THRESHOLD = 1;
 const MIN_PANEL_SIZE_DRAG = 5;
 const COLLAPSED_SIZE = 0;
 
-export async function loader({ request }: LoaderFunctionArgs) {}
+const openai = createOpenAI({
+  // custom settings, e.g.
+  compatibility: 'strict', // strict mode, enable when using the OpenAI API
+  apiKey:
+    import.meta.env.VITE_OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY,
+});
+
+const model = openai('gpt-4-turbo');
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await getUser(request);
+  if (!user) {
+    throw new Response('Unauthorized', { status: 401 });
+  }
+
+  const projects = await prisma.project.findMany({
+    where: { userId: user.id },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  const homeProjects = projects.map((project) => ({
+    id: project.id,
+    name: project.name,
+    lastActive: project.updatedAt.toISOString(),
+    badge: 'Active',
+    starred: project.starred,
+  }));
+
+  return { homeProjects, user };
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const result = { message: 'Hello world' };
+  console.log('Action result:', result);
+  return result;
+}
 
 export default function Dashboard() {
-  const data = useLoaderData<typeof loader>();
-  console.log(data, 'data');
+  const { homeProjects, user } = useLoaderData<typeof loader>();
+  const { messages, append } = useChat();
+  const latestMessages = useLatest(messages);
+  console.log('messages', latestMessages.current);
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const location = useLocation();
   const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
   const firstPanelRef = useRef<ImperativePanelHandle>(null);
   const secondPanelRef = useRef<ImperativePanelHandle>(null);
-  const isMobile = useIsMobile();
-  const location = useLocation();
-  const navigate = useNavigate();
   const [layout, setLayout] = useState<number[]>(DEFAULT_LAYOUT);
 
   // Determine active tab based on route
@@ -132,6 +177,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleGenerateText = async (input: string) => {
+    try {
+      await append({
+        role: 'user',
+        content: input,
+      });
+
+      const response = await generateText({
+        model,
+        messages: latestMessages.current,
+      });
+      await append({
+        role: 'assistant',
+        content: response.text,
+      });
+    } catch (error) {
+      console.error('Error generating text:', error);
+    }
+  };
+
   // Right panel actions (navigation links and reset button)
   const rightPanelActions = (
     <>
@@ -208,7 +273,10 @@ export default function Dashboard() {
   );
 
   return (
-    <SidebarLayout content={<HomePanelContent projects={[]} />}>
+    <AppLayout
+      content={<HomePanelContent projects={homeProjects} />}
+      user={user}
+    >
       <TwoColumnResizeLayout autoSaveId="dashboard-layout">
         <TwoColumnResizeLayout.LeftPanel>
           {!isMobile && (
@@ -231,7 +299,7 @@ export default function Dashboard() {
               </Breadcrumb>
             </TwoColumnResizeLayout.LeftPanel.Actions>
           )}
-          <div className="flex-1 lg:p-3 flex flex-col">
+          <div className="flex-1 min-h-0 h-full flex flex-col">
             {isMobile ? (
               <Tabs
                 value={activeTab}
@@ -294,7 +362,7 @@ export default function Dashboard() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="chat" className="flex-1 m-0">
-                  <Chat />
+                  <Chat handleSubmit={handleGenerateText} messages={messages} />
                 </TabsContent>
                 <TabsContent value="editor" className="flex-1 m-0">
                   <Outlet />
@@ -307,7 +375,7 @@ export default function Dashboard() {
                 </TabsContent>
               </Tabs>
             ) : (
-              <Chat />
+              <Chat handleSubmit={handleGenerateText} messages={messages} />
             )}
           </div>
         </TwoColumnResizeLayout.LeftPanel>
@@ -325,6 +393,6 @@ export default function Dashboard() {
           </TwoColumnResizeLayout.RightPanel>
         )}
       </TwoColumnResizeLayout>
-    </SidebarLayout>
+    </AppLayout>
   );
 }

@@ -7,6 +7,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu';
+import { Form, Link } from 'react-router';
+import type { User } from '#/types/appTypes';
 
 import LogoutCircleIcon from '#/components/icons/logoutCircle';
 import UserLineIcon from '#/components/icons/userLineIcon';
@@ -14,29 +16,44 @@ import PulseLineIcon from '#/components/icons/pulseLineIcon';
 import FindReplaceIcon from '#/components/icons/findReplaceIcon';
 import TimerLineIcon from '#/components/icons/timerLineIcon';
 
-export default function UserDropdown() {
+interface UserDropdownProps {
+  user: User;
+}
+
+export default function UserDropdown({ user }: UserDropdownProps) {
+  // Get initials for avatar fallback
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
           <Avatar className="size-8 aspect-square rounded-lg cursor-pointer">
             <AvatarImage
-              src="https://res.cloudinary.com/dlzlfasou/image/upload/v1741345634/user-02_mlqqqt.png"
+              src={user.image?.url}
               width={32}
               height={32}
-              alt="Profile image"
+              alt={`${user.name || user.username}'s profile image`}
             />
-            <AvatarFallback>KK</AvatarFallback>
+            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-w-64 p-2" align="end">
         <DropdownMenuLabel className="flex min-w-0 flex-col py-0 px-1 mb-2">
           <span className="truncate text-sm font-medium text-foreground mb-0.5">
-            Mary P.
+            {user.name || user.username}
           </span>
           <span className="truncate text-xs font-normal text-muted-foreground">
-            mary@askdigital.com
+            {user.email}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuItem className="gap-3 px-1">
@@ -51,7 +68,9 @@ export default function UserDropdown() {
             className="text-muted-foreground/70"
             aria-hidden="true"
           />
-          <span>Profile</span>
+          <Link to="/profile">
+            <span>Profile</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-3 px-1">
           <PulseLineIcon
@@ -67,13 +86,17 @@ export default function UserDropdown() {
           />
           <span>History</span>
         </DropdownMenuItem>
-        <DropdownMenuItem className="gap-3 px-1">
-          <LogoutCircleIcon
-            className="text-muted-foreground/70"
-            aria-hidden="true"
-          />
-          <span>Log out</span>
-        </DropdownMenuItem>
+        <Form method="post" action="/auth/logout">
+          <DropdownMenuItem asChild className="gap-3 px-1">
+            <button type="submit" className="w-full flex items-center">
+              <LogoutCircleIcon
+                className="text-muted-foreground/70"
+                aria-hidden="true"
+              />
+              <span>Log out</span>
+            </button>
+          </DropdownMenuItem>
+        </Form>
       </DropdownMenuContent>
     </DropdownMenu>
   );
