@@ -345,7 +345,7 @@ export default function ProfileIndex() {
   };
 
   return (
-    <div className="w-full bg-slate-100 dark:bg-neutral-950 py-10 sm:py-16 px-4 font-sans antialiased">
+    <div className="w-full min-h-screen bg-slate-100 dark:bg-neutral-950 py-10 sm:py-16 px-4 font-sans antialiased">
       <div className="max-w-xl mx-auto space-y-12">
         <div className="flex justify-between items-start">
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
