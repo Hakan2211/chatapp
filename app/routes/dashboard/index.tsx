@@ -4,6 +4,8 @@ import {
   useLoaderData,
   useLocation,
   useNavigate,
+  useFetcher,
+  redirect,
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from 'react-router';
@@ -17,7 +19,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '#/components/ui/breadcrumb';
-import { useLatest } from 'ahooks';
 import { motion } from 'framer-motion';
 import { cn } from '#/lib/utils';
 import { HeaderButton } from '#/components/layout/mainOutlet/headerButton';
@@ -26,37 +27,33 @@ import type {
   ImperativePanelHandle,
   PanelGroupOnLayout,
 } from 'react-resizable-panels';
-import { createOpenAI } from '@ai-sdk/openai';
+
 import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
 import Chat from '#/components/chat/chat';
-import { generateText } from 'ai';
-import { useChat } from '@ai-sdk/react';
+import { generateText, type CoreMessage, type Message as AIMessage } from 'ai';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
 import AppLayout from '#/components/layout/sidebar/appLayout';
 import { HomePanelContent } from '#/components/sidebar/panels/homePanelContent';
 
-import { getUser } from '#/utils/auth.server';
+import { getUser, requireUserId } from '#/utils/auth.server';
 import { prisma } from '#/utils/db.server';
+import { defaultChatModel } from '#/utils/ai.server';
 
 const DEFAULT_LAYOUT = [67, 33];
 const COLLAPSE_THRESHOLD = 1;
 const MIN_PANEL_SIZE_DRAG = 5;
 const COLLAPSED_SIZE = 0;
 
-const openai = createOpenAI({
-  // custom settings, e.g.
-  compatibility: 'strict', // strict mode, enable when using the OpenAI API
-  apiKey:
-    import.meta.env.VITE_OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY,
-});
-
-const model = openai('gpt-4-turbo');
-
+// -----------------------------------------------------------------------------------------------------------
+// -----------Loader Function--------------------------------
+// -----------------------------------------------------------------------------------------------------------
 export async function loader({ request }: LoaderFunctionArgs) {
+  const userId = await requireUserId(request);
   const user = await getUser(request);
   if (!user) {
-    throw new Response('Unauthorized', { status: 401 });
+    throw redirect('/auth/login');
   }
 
   const projects = await prisma.project.findMany({
@@ -72,20 +69,132 @@ export async function loader({ request }: LoaderFunctionArgs) {
     starred: project.starred,
   }));
 
-  return { homeProjects, user };
+  let chat = await prisma.chat.findFirst({
+    where: { userId: user.id, name: 'Dashboard Chat' }, // Example: a named default chat
+    include: {
+      messages: {
+        orderBy: { timestamp: 'asc' },
+      },
+    },
+  });
+
+  const initialMessages: AIMessage[] = chat
+    ? chat.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role as AIMessage['role'], // 'user' | 'assistant' etc.
+        content: msg.content,
+        createdAt: msg.timestamp,
+      }))
+    : [];
+
+  return { homeProjects, user, initialMessages, chatId: chat?.id || null };
 }
 
+// -----------------------------------------------------------------------------------------------------------
+// -----------Action Function--------------------------------
+// -----------------------------------------------------------------------------------------------------------
 export async function action({ request }: ActionFunctionArgs) {
-  const result = { message: 'Hello world' };
-  console.log('Action result:', result);
-  return result;
+  const userId = await requireUserId(request);
+  const formData = await request.formData();
+  const userInput = formData.get('userInput') as string;
+  let chatId = formData.get('chatId') as string | null; // Client sends existing chatId
+
+  if (!userInput) {
+    return new Response('Message content is required', { status: 400 });
+  }
+
+  let chatInstance;
+
+  // 1. Find or Create Chat
+  if (chatId && chatId !== 'null') {
+    chatInstance = await prisma.chat.findUnique({
+      where: { id: chatId, userId }, // Ensure user owns the chat
+    });
+    if (!chatInstance) chatId = null; // If chatId invalid, force create new
+  }
+
+  if (!chatId || chatId === 'null') {
+    chatInstance = await prisma.chat.create({
+      data: {
+        userId,
+        name: 'Dashboard Chat', // Or generate a name, or leave null
+        type: 'solo', // Default type
+        currentModel: defaultChatModel.modelId,
+      },
+    });
+    chatId = chatInstance.id;
+  } else if (!chatInstance) {
+    // Should not happen if logic is correct
+    return new Response('Chat not found', { status: 404 });
+  }
+
+  // 2. Save User Message
+  await prisma.chatMessage.create({
+    data: {
+      chatId: chatId!,
+      senderId: userId,
+      role: 'user',
+      content: userInput,
+    },
+  });
+
+  const dbMessages = await prisma.chatMessage.findMany({
+    where: { chatId: chatId! },
+    orderBy: { timestamp: 'asc' },
+  });
+
+  const messagesForAI = dbMessages.map((msg) => ({
+    role: msg.role as 'user' | 'assistant' | 'system',
+    content: msg.content,
+  }));
+
+  try {
+    // 4. Call AI
+    const aiResponse = await generateText({
+      model: defaultChatModel,
+      messages: messagesForAI,
+    });
+
+    // 5. Save AI Response
+    await prisma.chatMessage.create({
+      data: {
+        chatId: chatId!,
+        role: 'assistant',
+        content: aiResponse.text,
+        model: defaultChatModel.modelId,
+      },
+    });
+
+    return new Response(JSON.stringify({ success: true, chatId }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error: any) {
+    console.error('AI Error or DB Error saving AI message:', error);
+    // Optionally, save an error message from the assistant
+    await prisma.chatMessage.create({
+      data: {
+        chatId: chatId!,
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${
+          error.message || 'Unknown error'
+        }`,
+        model: defaultChatModel.modelId,
+      },
+    });
+    return new Response('Failed to get AI response or save it.', {
+      status: 500,
+    });
+  }
 }
 
 export default function Dashboard() {
-  const { homeProjects, user } = useLoaderData<typeof loader>();
-  const { messages, append } = useChat();
-  const latestMessages = useLatest(messages);
-  console.log('messages', latestMessages.current);
+  const {
+    homeProjects,
+    user,
+    initialMessages,
+    chatId: loadedChatId,
+  } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -93,6 +202,58 @@ export default function Dashboard() {
   const firstPanelRef = useRef<ImperativePanelHandle>(null);
   const secondPanelRef = useRef<ImperativePanelHandle>(null);
   const [layout, setLayout] = useState<number[]>(DEFAULT_LAYOUT);
+
+  // Manage messages: Initialize with loader, update optimistically & from fetcher
+  const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(
+    loadedChatId
+  );
+
+  // Sync messages from loader (e.g., after action revalidates)
+  useEffect(() => {
+    setMessages(initialMessages);
+    setCurrentChatId(loadedChatId);
+  }, [initialMessages, loadedChatId]);
+
+  // Handle fetcher state (after action completes)
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      const data = fetcher.data as {
+        success?: boolean;
+        chatId?: string;
+        error?: string;
+      };
+      if (data.success && data.chatId) {
+        if (!currentChatId) {
+          setCurrentChatId(data.chatId);
+        }
+      } else if (data.error) {
+        console.error('Action error:', data.error);
+      }
+    }
+  }, [fetcher.state, fetcher.data, currentChatId, navigate]);
+
+  const handleSendMessage = (inputValue: string) => {
+    if (!inputValue.trim()) return;
+
+    // Optimistic update for user's message
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      {
+        id: `optimistic-${Date.now()}`, // Temporary ID
+        role: 'user',
+        content: inputValue,
+        createdAt: new Date(),
+      },
+    ]);
+
+    const formData = new FormData();
+    formData.append('userInput', inputValue);
+    if (currentChatId) {
+      formData.append('chatId', currentChatId);
+    }
+    fetcher.submit(formData, { method: 'POST' });
+  };
 
   // Determine active tab based on route
   const getActiveTab = () => {
@@ -174,26 +335,6 @@ export default function Dashboard() {
     setActiveTab(value);
     if (value !== 'chat' && value !== getActiveTab()) {
       navigate(value); // Navigate to editor, summary, or notes if not already active
-    }
-  };
-
-  const handleGenerateText = async (input: string) => {
-    try {
-      await append({
-        role: 'user',
-        content: input,
-      });
-
-      const response = await generateText({
-        model,
-        messages: latestMessages.current,
-      });
-      await append({
-        role: 'assistant',
-        content: response.text,
-      });
-    } catch (error) {
-      console.error('Error generating text:', error);
     }
   };
 
@@ -362,7 +503,14 @@ export default function Dashboard() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="chat" className="flex-1 m-0">
-                  <Chat handleSubmit={handleGenerateText} messages={messages} />
+                  <Chat
+                    handleSubmit={handleSendMessage}
+                    messages={messages}
+                    isLoading={
+                      fetcher.state === 'submitting' ||
+                      fetcher.state === 'loading'
+                    }
+                  />
                 </TabsContent>
                 <TabsContent value="editor" className="flex-1 m-0">
                   <Outlet />
@@ -375,7 +523,13 @@ export default function Dashboard() {
                 </TabsContent>
               </Tabs>
             ) : (
-              <Chat handleSubmit={handleGenerateText} messages={messages} />
+              <Chat
+                handleSubmit={handleSendMessage}
+                messages={messages}
+                isLoading={
+                  fetcher.state === 'submitting' || fetcher.state === 'loading'
+                }
+              />
             )}
           </div>
         </TwoColumnResizeLayout.LeftPanel>

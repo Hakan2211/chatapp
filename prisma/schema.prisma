@@ -78,6 +78,7 @@ model Note {
 
 model Chat {
   id        String   @id @default(cuid())
+  name      String?
   type      String //"solo", "group"
   currentModel String? //"gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet", "grok-3-1"
   projectId      String?
@@ -90,6 +91,8 @@ model Chat {
   participants ChatParticipant[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
 
 model ChatMessage {
@@ -98,9 +101,12 @@ model ChatMessage {
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   senderId  String? //nullable for ai responses
   sender    User?   @relation(fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  text   String
+  role      String? //"user", "assistant"
+  content   String
   model    String? //"gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet", "grok-3-1"
   timestamp DateTime @default(now())
+
+  @@index([chatId, timestamp])
 }
 
 model ChatParticipant {

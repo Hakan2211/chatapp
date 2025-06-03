@@ -34,7 +34,8 @@ import { ToggleGroup, ToggleGroupItem } from '#/components/ui/toggle-group';
 import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar';
 import { Separator } from '#/components/ui/separator';
-import type { Message } from 'ai';
+import type { Message as AIMessage } from 'ai';
+
 const groupUsers = [
   {
     id: 'u1',
@@ -48,9 +49,11 @@ const groupUsers = [
 export default function Chat({
   handleSubmit,
   messages,
+  isLoading,
 }: {
   handleSubmit: (input: string) => void;
-  messages: Message[];
+  messages: AIMessage[];
+  isLoading?: boolean;
 }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState('');
@@ -59,7 +62,7 @@ export default function Chat({
   const [chatMode, setChatMode] = useState<'solo' | 'group'>('solo');
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = () => {
@@ -138,23 +141,27 @@ export default function Chat({
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 min-h-0 w-full shadow-md md:rounded-s-[inherit] bg-gradient-to-t from-white to-blue-50/30 dark:from-gray-900 dark:to-gray-800 min-[1024px]:rounded-e-3xl">
-        <div className="max-w-3xl mx-auto mt-6 space-y-6 px-4 md:px-6 lg:px-8 pb-4">
-          <div className="text-center my-8">
-            <div className="inline-flex items-center gap-1.5 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm rounded-full border border-blue-400/50 dark:border-blue-500/50 shadow-sm text-xs font-medium py-1.5 px-3.5 text-foreground/90 dark:text-foreground/80 transition-all hover:border-blue-500/70 dark:hover:border-blue-600/70">
-              <RiShining2Line
-                className="text-blue-500/80 dark:text-blue-400/80 -ms-0.5"
-                size={14}
-                aria-hidden="true"
-              />
-              Today
-            </div>
-          </div>
+      <ScrollArea className="flex-1 min-h-0 w-full ...">
+        <div className="max-w-3xl mx-auto mt-6 space-y-6 ... pb-4">
+          {/* ... Today indicator ... */}
           {messages.map((message, index) => (
-            <ChatMessage key={index} isUser={message.role === 'user'}>
-              <p>{message.content}</p>
+            <ChatMessage
+              key={message.id || index}
+              isUser={message.role === 'user'}
+            >
+              {/* Preserve whitespace and render newlines from AI */}
+              <p style={{ whiteSpace: 'pre-wrap' }}>{message.content}</p>
             </ChatMessage>
           ))}
+          {isLoading &&
+            messages.length > 0 &&
+            messages[messages.length - 1].role === 'user' && ( // Show loading after user's optimistic message
+              <ChatMessage isUser={false}>
+                <p>
+                  <i>Assistant is thinking...</i>
+                </p>
+              </ChatMessage>
+            )}
           <div ref={messagesEndRef} aria-hidden="true" />
         </div>
       </ScrollArea>
@@ -172,6 +179,7 @@ export default function Chat({
               onKeyDown={handleKeyDown}
               minRows={1}
               maxRows={6}
+              disabled={isLoading}
             />
             {/* Textarea buttons */}
             <div className="flex items-center justify-between gap-2 p-3">
@@ -290,7 +298,7 @@ export default function Chat({
                         className={cn(
                           'flex-shrink-0 rounded-full size-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-gray-200 disabled:opacity-50'
                         )}
-                        disabled={!input.trim()}
+                        disabled={!input.trim() || isLoading}
                         onClick={handleSend}
                         aria-label="Send message"
                       >
