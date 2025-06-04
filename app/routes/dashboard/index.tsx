@@ -31,7 +31,8 @@ import type {
 import type { ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { useIsMobile } from '#/hooks/use-mobile';
 import Chat from '#/components/chat/chat';
-import { generateText, type CoreMessage, type Message as AIMessage } from 'ai';
+
+import { useChat, type Message as AIMessage } from '@ai-sdk/react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
 import AppLayout from '#/components/layout/sidebar/appLayout';
@@ -40,7 +41,7 @@ import { HomePanelContent } from '#/components/sidebar/panels/homePanelContent';
 import { getUser, requireUserId } from '#/utils/auth.server';
 import { prisma } from '#/utils/db.server';
 import { defaultChatModel } from '#/utils/ai.server';
-
+import { TypingIndicator } from '#/components/chat/typing-indicator';
 const DEFAULT_LAYOUT = [67, 33];
 const COLLAPSE_THRESHOLD = 1;
 const MIN_PANEL_SIZE_DRAG = 5;
@@ -96,102 +97,44 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const userId = await requireUserId(request);
   const formData = await request.formData();
-  const userInput = formData.get('userInput') as string;
-  let chatId = formData.get('chatId') as string | null; // Client sends existing chatId
+  const intent = formData.get('intent');
 
-  if (!userInput) {
-    return new Response('Message content is required', { status: 400 });
-  }
-
-  let chatInstance;
-
-  // 1. Find or Create Chat
-  if (chatId && chatId !== 'null') {
-    chatInstance = await prisma.chat.findUnique({
-      where: { id: chatId, userId }, // Ensure user owns the chat
+  if (intent === 'createChat') {
+    // Optional: Check if a "Dashboard Chat" already exists to avoid multiple defaults
+    const existingDefaultChat = await prisma.chat.findFirst({
+      where: { userId, name: 'Dashboard Chat' },
     });
-    if (!chatInstance) chatId = null; // If chatId invalid, force create new
-  }
+    if (existingDefaultChat) {
+      return {
+        chatId: existingDefaultChat.id,
+        intent: 'createChatSuccess',
+        alreadyExisted: true,
+      };
+    }
 
-  if (!chatId || chatId === 'null') {
-    chatInstance = await prisma.chat.create({
+    const newChat = await prisma.chat.create({
       data: {
         userId,
-        name: 'Dashboard Chat', // Or generate a name, or leave null
-        type: 'solo', // Default type
+        name: 'Dashboard Chat',
+        type: 'solo',
         currentModel: defaultChatModel.modelId,
       },
     });
-    chatId = chatInstance.id;
-  } else if (!chatInstance) {
-    // Should not happen if logic is correct
-    return new Response('Chat not found', { status: 404 });
+    return {
+      chatId: newChat.id,
+      intent: 'createChatSuccess',
+      alreadyExisted: false,
+    };
   }
 
-  // 2. Save User Message
-  await prisma.chatMessage.create({
-    data: {
-      chatId: chatId!,
-      senderId: userId,
-      role: 'user',
-      content: userInput,
-    },
-  });
-
-  const dbMessages = await prisma.chatMessage.findMany({
-    where: { chatId: chatId! },
-    orderBy: { timestamp: 'asc' },
-  });
-
-  const messagesForAI = dbMessages.map((msg) => ({
-    role: msg.role as 'user' | 'assistant' | 'system',
-    content: msg.content,
-  }));
-
-  try {
-    // 4. Call AI
-    const aiResponse = await generateText({
-      model: defaultChatModel,
-      messages: messagesForAI,
-    });
-
-    // 5. Save AI Response
-    await prisma.chatMessage.create({
-      data: {
-        chatId: chatId!,
-        role: 'assistant',
-        content: aiResponse.text,
-        model: defaultChatModel.modelId,
-      },
-    });
-
-    return new Response(JSON.stringify({ success: true, chatId }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error: any) {
-    console.error('AI Error or DB Error saving AI message:', error);
-    // Optionally, save an error message from the assistant
-    await prisma.chatMessage.create({
-      data: {
-        chatId: chatId!,
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${
-          error.message || 'Unknown error'
-        }`,
-        model: defaultChatModel.modelId,
-      },
-    });
-    return new Response('Failed to get AI response or save it.', {
-      status: 500,
-    });
-  }
+  return { error: 'Invalid intent', status: 400 };
 }
 
 export default function Dashboard() {
   const {
     homeProjects,
     user,
-    initialMessages,
+    initialMessages: loadedInitialMessages,
     chatId: loadedChatId,
   } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
@@ -204,56 +147,132 @@ export default function Dashboard() {
   const [layout, setLayout] = useState<number[]>(DEFAULT_LAYOUT);
 
   // Manage messages: Initialize with loader, update optimistically & from fetcher
-  const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
+
   const [currentChatId, setCurrentChatId] = useState<string | null>(
     loadedChatId
   );
 
-  // Sync messages from loader (e.g., after action revalidates)
   useEffect(() => {
-    setMessages(initialMessages);
-    setCurrentChatId(loadedChatId);
-  }, [initialMessages, loadedChatId]);
+    if (!currentChatId && fetcher.state === 'idle' && !fetcher.data?.chatId) {
+      console.log('No currentChatId, submitting intent: createChat');
+      fetcher.submit({ intent: 'createChat' }, { method: 'POST' });
+    }
+  }, [currentChatId, fetcher]);
 
-  // Handle fetcher state (after action completes)
+  // Effect to handle result of chat creation
   useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      const data = fetcher.data as {
-        success?: boolean;
-        chatId?: string;
-        error?: string;
-      };
-      if (data.success && data.chatId) {
-        if (!currentChatId) {
-          setCurrentChatId(data.chatId);
+    const fetcherData = fetcher.data;
+    if (fetcherData?.intent === 'createChatSuccess' && fetcherData.chatId) {
+      if (currentChatId !== fetcherData.chatId) {
+        console.log(
+          'Dashboard: Chat creation/fetch successful. Setting currentChatId:',
+          fetcherData.chatId
+        );
+        setCurrentChatId(fetcherData.chatId);
+        // If a brand new chat was created, we want useChat to start with empty messages.
+        if (!fetcherData.alreadyExisted) {
+          setMessages([]); // Clear messages for the new chat session
         }
-      } else if (data.error) {
-        console.error('Action error:', data.error);
       }
+    } else if (fetcherData?.error) {
+      console.error(
+        'Dashboard: Error from createChat action:',
+        fetcherData.error
+      );
+      // TODO: Display this error to the user (e.g., via a toast)
     }
-  }, [fetcher.state, fetcher.data, currentChatId, navigate]);
+  }, [fetcher.data, currentChatId]); // Removed setMessages from deps here as it's handled below
 
-  const handleSendMessage = (inputValue: string) => {
-    if (!inputValue.trim()) return;
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading: isUseChatLoading,
+    error: useChatError,
+    setMessages,
+  } = useChat({
+    api: '/chat-stream', // Points to your new streaming API route
+    initialMessages:
+      currentChatId && currentChatId === loadedChatId
+        ? loadedInitialMessages
+        : [], // Load existing messages
+    id: currentChatId || undefined, // Pass the current chat ID to the hook, convert null to undefined
+    body: {
+      // Additional data to send with each request to the API
+      chatId: currentChatId,
+      // You could also send the selected model if you have model selection UI
+      // model: currentSelectedModel,
+    },
+    onResponse(response) {
+      console.log('[useChat] onResponse:', response);
+      if (!response.ok) {
+        response
+          .text()
+          .then((text) =>
+            console.error('[useChat] onResponse Error Body:', text)
+          );
+      }
+    },
+    onFinish(message) {
+      // This `onFinish` is client-side, after the stream has been fully processed by `useChat`.
+      // The server-side `onFinish` in `streamText` is for saving to DB.
+      console.log('Client: Stream finished, final message:', message);
+      // You might not need to do much here if optimistic updates + server save are smooth.
+      // If there was a DB save error on server, `message` might not be in `loadedInitialMessages` on next load.
+    },
+    onError(error) {
+      console.error('Client: useChat error:', error);
+      // Display error to user
+    },
+  });
 
-    // Optimistic update for user's message
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      {
-        id: `optimistic-${Date.now()}`, // Temporary ID
-        role: 'user',
-        content: inputValue,
-        createdAt: new Date(),
-      },
-    ]);
-
-    const formData = new FormData();
-    formData.append('userInput', inputValue);
-    if (currentChatId) {
-      formData.append('chatId', currentChatId);
+  // Effect to synchronize `useChat`'s messages if `loadedInitialMessages` change
+  // for the currently active chat (e.g., after a full page reload).
+  useEffect(() => {
+    if (currentChatId && currentChatId === loadedChatId) {
+      // Avoid unnecessary re-renders if messages are already in sync
+      if (JSON.stringify(messages) !== JSON.stringify(loadedInitialMessages)) {
+        console.log(
+          'Dashboard: Syncing messages from loader for currentChatId:',
+          currentChatId
+        );
+        setMessages(loadedInitialMessages);
+      }
+    } else if (!currentChatId && messages.length > 0) {
+      // No active chat ID, but useChat might have residual messages; clear them.
+      console.log('Dashboard: No currentChatId, clearing messages.');
+      setMessages([]);
     }
-    fetcher.submit(formData, { method: 'POST' });
-  };
+    // This effect runs when currentChatId changes. If it changes to a new ID (not from loader),
+    // `useChat` re-initializes. The `initialMessages` prop of `useChat` handles the starting messages for that new ID.
+  }, [
+    currentChatId,
+    loadedChatId,
+    loadedInitialMessages,
+    setMessages,
+    messages,
+  ]);
+
+  // UI readiness states
+  const isSystemCreatingChat =
+    fetcher.state !== 'idle' && !fetcher.data?.chatId;
+  const isChatReady = !!currentChatId && !isSystemCreatingChat;
+
+  console.log('[Dashboard] currentChatId:', currentChatId);
+  console.log('[Dashboard] fetcher.state:', fetcher.state);
+  console.log('[Dashboard] fetcher.data:', fetcher.data);
+  console.log('[Dashboard] isSystemCreatingChat:', isSystemCreatingChat);
+  console.log('[Dashboard] isChatReady:', isChatReady); // <-- CRITICAL LOG
+
+  // Determine active tab based on route
+  function getActiveTabFromLocation() {
+    // Made into a function
+    const path = location.pathname.split('/').pop();
+    if (path === 'editor') return 'editor';
+    if (path === 'summary' || path === 'notes') return path;
+    return 'chat';
+  }
 
   // Determine active tab based on route
   const getActiveTab = () => {
@@ -503,14 +522,24 @@ export default function Dashboard() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="chat" className="flex-1 m-0">
-                  <Chat
-                    handleSubmit={handleSendMessage}
-                    messages={messages}
-                    isLoading={
-                      fetcher.state === 'submitting' ||
-                      fetcher.state === 'loading'
-                    }
-                  />
+                  {isChatReady ? (
+                    <Chat
+                      handleSubmit={handleSubmit}
+                      messages={messages}
+                      isLoading={isUseChatLoading}
+                      input={input}
+                      handleInputChange={handleInputChange}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                      <TypingIndicator />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {isSystemCreatingChat || fetcher.state === 'submitting'
+                          ? 'Setting up your chat...'
+                          : 'Initializing chat session...'}
+                      </p>
+                    </div>
+                  )}
                 </TabsContent>
                 <TabsContent value="editor" className="flex-1 m-0">
                   <Outlet />
@@ -523,13 +552,26 @@ export default function Dashboard() {
                 </TabsContent>
               </Tabs>
             ) : (
-              <Chat
-                handleSubmit={handleSendMessage}
-                messages={messages}
-                isLoading={
-                  fetcher.state === 'submitting' || fetcher.state === 'loading'
-                }
-              />
+              <>
+                {isChatReady ? (
+                  <Chat
+                    handleSubmit={handleSubmit}
+                    messages={messages}
+                    isLoading={isUseChatLoading}
+                    input={input}
+                    handleInputChange={handleInputChange}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                    <TypingIndicator />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {isSystemCreatingChat || fetcher.state === 'submitting'
+                        ? 'Setting up your chat...'
+                        : 'Initializing chat session...'}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </TwoColumnResizeLayout.LeftPanel>

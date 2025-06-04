@@ -34,7 +34,8 @@ import { ToggleGroup, ToggleGroupItem } from '#/components/ui/toggle-group';
 import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar';
 import { Separator } from '#/components/ui/separator';
-import type { Message as AIMessage } from 'ai';
+import type { Message as AIMessage, UseChatHelpers } from '@ai-sdk/react';
+import { TypingIndicator } from './typing-indicator';
 
 const groupUsers = [
   {
@@ -50,13 +51,16 @@ export default function Chat({
   handleSubmit,
   messages,
   isLoading,
+  input,
+  handleInputChange,
 }: {
-  handleSubmit: (input: string) => void;
+  handleSubmit: UseChatHelpers['handleSubmit'];
   messages: AIMessage[];
   isLoading?: boolean;
+  input: string;
+  handleInputChange: UseChatHelpers['handleInputChange'];
 }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [input, setInput] = useState('');
   const [currentModel, setCurrentModel] = useState('GPT-4 Omni');
   const models = ['GPT-4 Omni', 'Claude 3 Opus', 'Llama 3 70B', 'Gemini Pro'];
   const [chatMode, setChatMode] = useState<'solo' | 'group'>('solo');
@@ -65,19 +69,32 @@ export default function Chat({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    // console.log(`Sending message with model ${currentModel}:`, input);
-    handleSubmit(input);
-    setInput('');
+  const localFormSubmitHandler = (event: React.FormEvent<HTMLFormElement>) => {
+    console.log('[Chat.tsx] LOCAL localFormSubmitHandler CALLED');
+    event.preventDefault(); // Explicitly prevent default
+    event.stopPropagation(); // Explicitly stop propagation (in case of nested issues)
+    console.log(
+      '[Chat.tsx] preventDefault and stopPropagation CALLED by local handler.'
+    );
+
+    if (!input.trim()) {
+      console.log('[Chat.tsx] Input is empty, local handler returning early.');
+      return false; // Returning false can also sometimes help prevent default in older contexts
+    }
+
+    console.log(
+      '[Chat.tsx] Calling handleSubmit prop (from useChat) WITHOUT event.'
+    );
+    handleSubmit(); // Call useChat's handleSubmit WITHOUT the event object initially.
+    // useChat's handleSubmit will use its internal `input` state.
+    console.log('[Chat.tsx] handleSubmit prop (from useChat) called.');
+    return false; // Again, try returning false
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      handleSend();
-    }
-  };
+  const showThinkingIndicator =
+    isLoading &&
+    messages.length > 0 &&
+    messages[messages.length - 1].role === 'user';
 
   return (
     <div className="flex flex-col h-full">
@@ -153,167 +170,185 @@ export default function Chat({
               <p style={{ whiteSpace: 'pre-wrap' }}>{message.content}</p>
             </ChatMessage>
           ))}
-          {isLoading &&
-            messages.length > 0 &&
-            messages[messages.length - 1].role === 'user' && ( // Show loading after user's optimistic message
-              <ChatMessage isUser={false}>
-                <p>
-                  <i>Assistant is thinking...</i>
-                </p>
-              </ChatMessage>
-            )}
+          {showThinkingIndicator && (
+            <ChatMessage isUser={false}>
+              <TypingIndicator />
+            </ChatMessage>
+          )}
           <div ref={messagesEndRef} aria-hidden="true" />
         </div>
       </ScrollArea>
 
       {/* Footer (Input Area) */}
       <div className="flex-none border-t border-white/20 bg-background/80 backdrop-blur-md">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-4">
-          <div className="relative rounded-[20px] backdrop-blur-md bg-gradient-to-t from-background to-blue-500/5 bg-blue-500/10 dark:bg-black/10 border border-white/20 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-            <TextareaAutosize
-              className="flex w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed"
-              placeholder="Ask me anything... (Shift+Enter for newline)"
-              aria-label="Enter your prompt"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              minRows={1}
-              maxRows={6}
-              disabled={isLoading}
-            />
-            {/* Textarea buttons */}
-            <div className="flex items-center justify-between gap-2 p-3">
-              <div className="flex items-center gap-1">
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-full size-8 border-none bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all"
-                        aria-label="Attach file"
-                      >
-                        <RiAttachment2
-                          className="text-muted-foreground size-5"
-                          size={20}
-                          aria-hidden="true"
-                        />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" align="center">
-                      <p>Attach File</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-full size-8 border-none bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                        aria-label="Audio"
-                      >
-                        <RiMicLine
-                          className="text-muted-foreground size-5"
-                          size={20}
-                          aria-hidden="true"
-                        />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" align="center">
-                      <p>RecordAudio</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider delayDuration={100}>
-                  <DropdownMenu>
+        <form onSubmit={localFormSubmitHandler}>
+          <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-4">
+            <div className="relative rounded-[20px] backdrop-blur-md bg-gradient-to-t from-background to-blue-500/5 bg-blue-500/10 dark:bg-black/10 border border-white/20 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
+              <TextareaAutosize
+                className="flex w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed"
+                placeholder={
+                  isLoading ? 'Assistant is thinking...' : 'Ask me anything...'
+                }
+                aria-label="Enter your prompt"
+                value={input}
+                onChange={handleInputChange}
+                //onKeyDown={handleKeyDown}
+                minRows={1}
+                maxRows={6}
+                disabled={isLoading}
+                // onKeyDown={(e) => {
+                //   // Optional: handle Enter for submit if not relying on form alone
+                //   if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                //     e.preventDefault();
+                //     handleFormSubmit(e.currentTarget.form as HTMLFormElement);
+                //   }
+                // }}
+              />
+              {/* Textarea buttons */}
+              <div className="flex items-center justify-between gap-2 p-3">
+                <div className="flex items-center gap-1">
+                  <TooltipProvider delayDuration={100}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="flex items-center rounded-full h-8 px-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/20 text-muted-foreground hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all text-sm font-medium"
-                            aria-label={`Current model: ${currentModel}. Click to change.`}
-                          >
-                            <RiCpuLine
-                              className="size-4 mr-1.5 flex-shrink-0 text-blue-400"
-                              aria-hidden="true"
-                            />
-                            <span className="truncate max-w-[100px] sm:max-w-[150px]">
-                              {currentModel}
-                            </span>
-                          </Button>
-                        </DropdownMenuTrigger>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="rounded-full size-8 border-none bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all"
+                          aria-label="Attach file"
+                        >
+                          <RiAttachment2
+                            className="text-muted-foreground size-5"
+                            size={20}
+                            aria-hidden="true"
+                          />
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="center">
-                        <p>Select Model</p>
+                        <p>Attach File</p>
                       </TooltipContent>
                     </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="rounded-full size-8 border-none bg-gradient-to-br from-blue-500/20 to-purple-500/20 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                          aria-label="Audio"
+                        >
+                          <RiMicLine
+                            className="text-muted-foreground size-5"
+                            size={20}
+                            aria-hidden="true"
+                          />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center">
+                        <p>RecordAudio</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider delayDuration={100}>
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="flex items-center rounded-full h-8 px-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/20 text-muted-foreground hover:shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all text-sm font-medium"
+                              aria-label={`Current model: ${currentModel}. Click to change.`}
+                            >
+                              <RiCpuLine
+                                className="size-4 mr-1.5 flex-shrink-0 text-blue-400"
+                                aria-hidden="true"
+                              />
+                              <span className="truncate max-w-[100px] sm:max-w-[150px]">
+                                {currentModel}
+                              </span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="center">
+                          <p>Select Model</p>
+                        </TooltipContent>
+                      </Tooltip>
 
-                    <DropdownMenuContent
-                      className="w-64 backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
-                      align="end"
-                      side="top"
-                    >
-                      <DropdownMenuLabel className="text-muted-foreground">
-                        Select Model
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup
-                        value={currentModel}
-                        onValueChange={setCurrentModel}
+                      <DropdownMenuContent
+                        className="w-64 backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
+                        align="end"
+                        side="top"
                       >
-                        {models.map((model) => (
-                          <DropdownMenuRadioItem
-                            className="text-muted-foreground hover:bg-blue-500/20 focus:bg-blue-500/30 flex justify-between items-center"
-                            key={model}
-                            value={model}
-                          >
-                            <span>{model}</span>
-                            <span className="text-xs opacity-70">
-                              {model === 'GPT-4 Omni'
-                                ? 'Advanced reasoning'
-                                : model === 'Claude 3 Opus'
-                                ? 'Creative writing'
-                                : model === 'Llama 3 70B'
-                                ? 'Open-source power'
-                                : 'Fast responses'}
-                            </span>
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TooltipProvider>
-              </div>
+                        <DropdownMenuLabel className="text-muted-foreground">
+                          Select Model
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={currentModel}
+                          onValueChange={setCurrentModel}
+                        >
+                          {models.map((model) => (
+                            <DropdownMenuRadioItem
+                              className="text-muted-foreground hover:bg-blue-500/20 focus:bg-blue-500/30 flex justify-between items-center"
+                              key={model}
+                              value={model}
+                            >
+                              <span>{model}</span>
+                              <span className="text-xs opacity-70">
+                                {model === 'GPT-4 Omni'
+                                  ? 'Advanced reasoning'
+                                  : model === 'Claude 3 Opus'
+                                  ? 'Creative writing'
+                                  : model === 'Llama 3 70B'
+                                  ? 'Open-source power'
+                                  : 'Fast responses'}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TooltipProvider>
+                </div>
 
-              {/* Right buttons */}
-              <div className="flex items-center gap-2">
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        className={cn(
-                          'flex-shrink-0 rounded-full size-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-gray-200 disabled:opacity-50'
-                        )}
-                        disabled={!input.trim() || isLoading}
-                        onClick={handleSend}
-                        aria-label="Send message"
-                      >
-                        <RiArrowUpLine size={18} aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" align="center">
-                      <p>Send Message</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Right buttons */}
+                <div className="flex items-center gap-2">
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="submit"
+                          onClick={() =>
+                            console.log('[Chat.tsx] SEND BUTTON CLICKED')
+                          }
+                          size="icon"
+                          className={cn(
+                            'flex-shrink-0 rounded-full size-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-gray-200 disabled:opacity-50'
+                          )}
+                          disabled={!input.trim() || isLoading}
+                          aria-label="Send message"
+                        >
+                          {isLoading ? (
+                            <span
+                              className="animate-spin inline-block h-4 w-4 border-2 border-current border-t-transparent rounded-full"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                          ) : (
+                            <RiArrowUpLine size={18} aria-hidden="true" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center">
+                        <p>Send Message</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
