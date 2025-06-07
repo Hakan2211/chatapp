@@ -117,3 +117,11 @@ this App combines real-time group learning, AI-driven personalization, and struc
 
 On the projects route you can careate projects and inside projects list and organize chats.
 On the notes route you can quick draft ideas with cahts without project folders. But you should be ablke then to send the note/draft.chat to a project if you want alter on.
+
+## ENV Variables
+
+- BASE_URL= http://localhost:5173
+- DATABASE_URL= "file:./data.db"
+- GOOGLE_CLIENT_ID= your-google-client-id
+- GOOGLE_CLIENT_SECRET= google key
+- VITE_OPENAI_API_KEY = your-openai-key
