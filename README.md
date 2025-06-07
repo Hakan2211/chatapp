@@ -99,6 +99,7 @@ this App combines real-time group learning, AI-driven personalization, and struc
   - Editor: either using **tiptap or lexical** (https://playground.lexical.dev/) (https://tiptap.dev/docs/examples/advanced/menus)
   - Summary: should be delivered form the ai given the chat content with a timeline. Given a context for the user of the chat etc.
   - Notes: users should be able to create additional notes to the chat and insert and save images.
+  - **Linking** the left chat and the right panels with each other! AI context provider!
 - changing the chat from private to public functionality.
 
 ### Group mode
