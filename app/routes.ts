@@ -9,7 +9,7 @@ import {
 export default [
   index('./routes/landing.tsx'),
 
-  //auth
+  //-----------------------auth routes ----------------------------------
   ...prefix('auth', [
     route('signup', './routes/auth/signup.tsx'),
     route('login', './routes/auth/login.tsx'),
@@ -18,7 +18,11 @@ export default [
     route('google/callback', './routes/auth/google.callback.tsx'),
   ]),
 
-  //icon-sidebar with outlet for InformationSidebar
+  //-----------------------resource routes ----------------------------------
+  route('images/user/:userId', './routes/resources/user-image.tsx'),
+  route('chat-stream', './routes/resources/chat-stream.ts'),
+
+  //-----------------------dashboard routes ------------APP----------------------
   layout('./routes/dashboard/layout.tsx', [
     route('dashboard', './routes/dashboard/index.tsx'),
     route('projects', './routes/dashboard/projects/projects.tsx', [
