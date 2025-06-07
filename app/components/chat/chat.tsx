@@ -8,7 +8,8 @@ import {
   RiMicLine,
 } from '@remixicon/react';
 import { ChatMessage } from '#/components/chat/chat-message';
-import { useRef, useEffect, useState } from 'react';
+import { Await, useFetcher, type FetcherWithComponents } from 'react-router';
+import { useRef, useEffect, useState, Suspense } from 'react';
 import { cn } from '#/lib/utils';
 
 import {
@@ -48,47 +49,41 @@ const groupUsers = [
 ];
 
 export default function Chat({
-  handleSubmit,
   messages,
   isLoading,
-  input,
-  handleInputChange,
+  fetcher,
+  currentChatId,
 }: {
-  handleSubmit: UseChatHelpers['handleSubmit'];
+  handleSubmit: (input: string) => void;
   messages: AIMessage[];
   isLoading?: boolean;
-  input: string;
-  handleInputChange: UseChatHelpers['handleInputChange'];
+  currentChatId: string | null;
+  fetcher: ReturnType<
+    typeof useFetcher<typeof import('#/routes/dashboard/index').action>
+  >;
 }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState('');
   const [currentModel, setCurrentModel] = useState('GPT-4 Omni');
   const models = ['GPT-4 Omni', 'Claude 3 Opus', 'Llama 3 70B', 'Gemini Pro'];
   const [chatMode, setChatMode] = useState<'solo' | 'group'>('solo');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const localFormSubmitHandler = (event: React.FormEvent<HTMLFormElement>) => {
-    console.log('[Chat.tsx] LOCAL localFormSubmitHandler CALLED');
-    event.preventDefault(); // Explicitly prevent default
-    event.stopPropagation(); // Explicitly stop propagation (in case of nested issues)
-    console.log(
-      '[Chat.tsx] preventDefault and stopPropagation CALLED by local handler.'
-    );
-
-    if (!input.trim()) {
-      console.log('[Chat.tsx] Input is empty, local handler returning early.');
-      return false; // Returning false can also sometimes help prevent default in older contexts
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    const formData = new FormData();
+    formData.append('userInput', input);
+    if (currentChatId) {
+      formData.append('chatId', currentChatId);
     }
-
-    console.log(
-      '[Chat.tsx] Calling handleSubmit prop (from useChat) WITHOUT event.'
-    );
-    handleSubmit(); // Call useChat's handleSubmit WITHOUT the event object initially.
-    // useChat's handleSubmit will use its internal `input` state.
-    console.log('[Chat.tsx] handleSubmit prop (from useChat) called.');
-    return false; // Again, try returning false
+    fetcher.submit(formData, { method: 'post', action: '/dashboard' });
+    setInput('');
   };
 
   const showThinkingIndicator =
@@ -170,39 +165,48 @@ export default function Chat({
               <p style={{ whiteSpace: 'pre-wrap' }}>{message.content}</p>
             </ChatMessage>
           ))}
-          {showThinkingIndicator && (
-            <ChatMessage isUser={false}>
-              <TypingIndicator />
-            </ChatMessage>
-          )}
-          <div ref={messagesEndRef} aria-hidden="true" />
+
+          <Suspense fallback={<TypingIndicator />}>
+            {showThinkingIndicator && (
+              <Await resolve={messages}>
+                <ChatMessage isUser={false}>
+                  <TypingIndicator />
+                </ChatMessage>
+              </Await>
+            )}
+          </Suspense>
         </div>
       </ScrollArea>
 
       {/* Footer (Input Area) */}
-      <div className="flex-none border-t border-white/20 bg-background/80 backdrop-blur-md">
-        <form onSubmit={localFormSubmitHandler}>
+      <fetcher.Form
+        action="/dashboard"
+        method="post"
+        ref={formRef}
+        onSubmit={handleSubmit}
+      >
+        <div className="flex-none border-t border-white/20 bg-background/80 backdrop-blur-md">
           <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-4">
             <div className="relative rounded-[20px] backdrop-blur-md bg-gradient-to-t from-background to-blue-500/5 bg-blue-500/10 dark:bg-black/10 border border-white/20 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
               <TextareaAutosize
+                name="userInput"
+                ref={inputRef}
                 className="flex w-full resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed"
                 placeholder={
                   isLoading ? 'Assistant is thinking...' : 'Ask me anything...'
                 }
                 aria-label="Enter your prompt"
                 value={input}
-                onChange={handleInputChange}
-                //onKeyDown={handleKeyDown}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                    e.preventDefault();
+                    formRef.current?.requestSubmit(); // Trigger form submission
+                  }
+                }}
                 minRows={1}
                 maxRows={6}
                 disabled={isLoading}
-                // onKeyDown={(e) => {
-                //   // Optional: handle Enter for submit if not relying on form alone
-                //   if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-                //     e.preventDefault();
-                //     handleFormSubmit(e.currentTarget.form as HTMLFormElement);
-                //   }
-                // }}
               />
               {/* Textarea buttons */}
               <div className="flex items-center justify-between gap-2 p-3">
@@ -318,9 +322,6 @@ export default function Chat({
                       <TooltipTrigger asChild>
                         <Button
                           type="submit"
-                          onClick={() =>
-                            console.log('[Chat.tsx] SEND BUTTON CLICKED')
-                          }
                           size="icon"
                           className={cn(
                             'flex-shrink-0 rounded-full size-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-gray-200 disabled:opacity-50'
@@ -348,8 +349,8 @@ export default function Chat({
               </div>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      </fetcher.Form>
     </div>
   );
 }
